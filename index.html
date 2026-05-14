@@ -1,2167 +1,2096 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Nexus Ops — Security & Compliance Command</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galatia's Security Progress Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-/* ═══════════════════════════════════════════
-   NEXUS OPS — Design System
-   Dark, cyber-adjacent, playful, breathable
-   ═══════════════════════════════════════════ */
 :root {
-  /* Base surfaces */
-  --b0: #0c0e14;
-  --b1: #111520;
-  --b2: #161b2a;
-  --b3: #1c2236;
-  --b4: #222a42;
-  --b5: #2a3350;
-
-  /* Glass */
-  --gl: rgba(255,255,255,0.03);
-  --gl2: rgba(255,255,255,0.055);
-  --gl3: rgba(255,255,255,0.085);
-
-  /* Borders */
-  --bd: rgba(255,255,255,0.07);
-  --bd2: rgba(255,255,255,0.12);
-  --bd3: rgba(255,255,255,0.2);
-
-  /* Text */
-  --t1: #e0e8f8;
-  --t2: #8a96b8;
-  --t3: #4a5578;
-  --t4: #2e3855;
-
-  /* Accent palette — VS Code adjacent but warmer */
-  --cyan:   #4fc3f7;  --cyan-d: rgba(79,195,247,0.12);
-  --blue:   #6499f5;  --blue-d: rgba(100,153,245,0.12);
-  --violet: #b39dfa;  --violet-d: rgba(179,157,250,0.12);
-  --green:  #4cceac;  --green-d: rgba(76,206,172,0.12);
-  --amber:  #f6c26a;  --amber-d: rgba(246,194,106,0.12);
-  --coral:  #f08080;  --coral-d: rgba(240,128,128,0.12);
-  --pink:   #f472b6;  --pink-d: rgba(244,114,182,0.12);
-  --teal:   #2dd4bf;  --teal-d: rgba(45,212,191,0.12);
-
-  /* Semantic */
-  --success: var(--green);
-  --warn:    var(--amber);
-  --danger:  var(--coral);
-  --info:    var(--cyan);
-
-  /* Module accent colors */
-  --idam-c:     #6499f5;
-  --snow-c:     #4fc3f7;
-  --uar-c:      #4cceac;
-  --fed-c:      #b39dfa;
-  --gcp-c:      #f6c26a;
-
-  --r:   8px;
-  --r2: 12px;
-  --r3: 16px;
-  --r4: 20px;
-
-  --font: 'Plus Jakarta Sans', sans-serif;
-  --mono: 'Fira Code', monospace;
-  --shadow: 0 4px 20px rgba(0,0,0,0.35);
-  --shadow2: 0 8px 40px rgba(0,0,0,0.5);
+  --bg: #0a0b0d;
+  --bg-card: #111318;
+  --bg-card2: #16191f;
+  --border: #1e2229;
+  --border-subtle: #161a21;
+  --text: #e2e8f0;
+  --text-muted: #6b7280;
+  --text-dim: #374151;
+  --cyan: #22d3ee;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --violet: #a78bfa;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --sidebar-w: 220px;
+  --topbar-h: 56px;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-main: 'Syne', sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  height: 100%; overflow: hidden;
-  background: var(--b0);
-  color: var(--t1);
-  font-family: var(--font);
-  font-size: 13px;
-  -webkit-font-smoothing: antialiased;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-main);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
 }
 
-/* Subtle grid texture on body */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(100,153,245,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(100,153,245,0.025) 1px, transparent 1px);
-  background-size: 40px 40px;
-  z-index: 0;
-}
-/* Ambient glow */
-body::after {
-  content: '';
-  position: fixed; inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 60% 35% at 50% -10%, rgba(100,153,245,0.08) 0%, transparent 70%),
-    radial-gradient(ellipse 30% 25% at 95% 85%, rgba(179,157,250,0.05) 0%, transparent 60%),
-    radial-gradient(ellipse 25% 20% at 5% 70%, rgba(76,206,172,0.04) 0%, transparent 60%);
-  z-index: 0;
-}
-
-/* ── LAYOUT ── */
-.app { display: flex; height: 100vh; position: relative; z-index: 1; }
+/* ===== SIDEBAR ===== */
 .sidebar {
-  width: 230px; min-width: 230px;
-  background: rgba(17,21,32,0.95);
-  border-right: 1px solid var(--bd);
-  display: flex; flex-direction: column;
-  overflow-y: auto; overflow-x: hidden;
-  position: relative; z-index: 10;
-  backdrop-filter: blur(20px);
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: #0d0f13;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  z-index: 100;
+  transition: transform 0.25s ease;
 }
-.main { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
 
-/* ── SIDEBAR LOGO ── */
-.s-logo {
-  padding: 20px 18px 16px;
-  border-bottom: 1px solid var(--bd);
-  display: flex; align-items: center; gap: 12px;
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
 }
-.s-logo-mark {
-  width: 36px; height: 36px; border-radius: var(--r2);
-  background: linear-gradient(135deg, var(--blue), var(--violet));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; flex-shrink: 0;
-  box-shadow: 0 0 20px rgba(100,153,245,0.3);
-}
-.s-logo-text { line-height: 1.2; }
-.s-logo-name { font-size: 15px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
-.s-logo-sub { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--t3); margin-top: 1px; }
 
-/* ── SIDEBAR NAV ── */
-.s-nav { flex: 1; padding: 12px 10px; }
-.s-section-label {
-  font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px;
-  color: var(--t4); padding: 10px 8px 5px; font-weight: 600;
+.logo-icon { color: var(--cyan); display: flex; align-items: center; }
+.logo-text { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+.logo-accent { color: var(--cyan); }
+
+.sidebar-section-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+  padding: 16px 20px 6px;
+  text-transform: uppercase;
 }
-.s-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 10px; border-radius: var(--r);
-  cursor: pointer; font-size: 13px; font-weight: 500;
-  color: var(--t2); background: none; border: none;
-  width: 100%; text-align: left; font-family: var(--font);
-  transition: all 0.15s; position: relative; outline: none;
+
+.nav-items { padding: 4px 12px; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s;
   margin-bottom: 1px;
 }
-.s-item:hover { background: var(--gl2); color: var(--t1); }
-.s-item.active { background: var(--blue-d); color: var(--blue); }
-.s-item.active::before {
-  content: '';
-  position: absolute; left: 0; top: 25%; height: 50%;
-  width: 3px; background: var(--blue);
-  border-radius: 0 3px 3px 0;
-}
-.s-item-icon { width: 18px; text-align: center; flex-shrink: 0; font-size: 14px; }
-.s-item-count {
-  margin-left: auto; font-family: var(--mono); font-size: 10px;
-  padding: 1px 6px; border-radius: 20px; min-width: 20px; text-align: center;
-}
-.count-hot  { background: var(--coral-d); color: var(--coral); }
-.count-ok   { background: var(--green-d); color: var(--green); }
-.count-warn { background: var(--amber-d); color: var(--amber); }
-.count-muted{ background: var(--gl2); color: var(--t3); }
-.s-divider { margin: 6px 12px; border: none; border-top: 1px solid var(--bd); }
 
-/* ── SIDEBAR FOOTER ── */
-.s-footer {
-  padding: 12px 14px;
-  border-top: 1px solid var(--bd);
-  background: var(--gl);
-}
-.s-user {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px; border-radius: var(--r);
-  background: var(--gl2); margin-bottom: 8px;
-}
-.s-avatar {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue), var(--violet));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
-}
-.s-user-info { flex: 1; min-width: 0; }
-.s-user-name { font-size: 12px; font-weight: 600; color: var(--t1); }
-.s-user-role { font-size: 10px; color: var(--t3); margin-top: 1px; }
-.s-db-status {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 10px; color: var(--t3); padding: 0 4px;
-}
-.db-pulse {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--green); animation: pulse 2s infinite;
-}
-.db-pulse.demo { background: var(--amber); }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+.nav-item:hover { background: rgba(34,211,238,0.06); color: var(--text); }
+.nav-item.active { background: rgba(34,211,238,0.1); color: var(--cyan); }
 
-/* ── TOPBAR ── */
+.sidebar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  margin-top: auto;
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 8px var(--emerald);
+  animation: pulse-dot 2s infinite;
+}
+
+.status-text { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+
+.sidebar-db-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 20px 18px;
+}
+
+.db-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+.db-indicator { color: var(--emerald); font-size: 10px; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ===== MAIN ===== */
+.main {
+  margin-left: var(--sidebar-w);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== TOPBAR ===== */
 .topbar {
-  position: sticky; top: 0; z-index: 20;
-  padding: 0 28px;
-  height: 56px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: rgba(12,14,20,0.85);
-  border-bottom: 1px solid var(--bd);
-  backdrop-filter: blur(16px);
+  height: var(--topbar-h);
+  background: #0d0f13;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+  z-index: 50;
 }
+
 .topbar-left { display: flex; align-items: center; gap: 12px; }
-.topbar-back {
-  width: 28px; height: 28px; border-radius: var(--r);
-  background: var(--gl2); border: 1px solid var(--bd2);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: var(--t2); font-size: 14px;
-  transition: all 0.15s;
-}
-.topbar-back:hover { background: var(--gl3); color: var(--t1); }
-.topbar-title {
-  font-size: 16px; font-weight: 700;
-  color: var(--t1); letter-spacing: -0.3px;
-}
-.topbar-subtitle { font-size: 11px; color: var(--t3); margin-top: 1px; }
-.topbar-right { display: flex; align-items: center; gap: 8px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
 
-/* ── BUTTONS ── */
-.btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 14px; border-radius: var(--r);
-  font-family: var(--font); font-size: 12px; font-weight: 600;
-  cursor: pointer; border: none; transition: all 0.15s;
-  letter-spacing: 0.1px;
+.menu-toggle {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 4px;
+  border-radius: 4px;
+  display: none;
 }
+
+.breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.search-bar input {
+  background: none; border: none; outline: none;
+  color: var(--text); font-size: 12px; width: 180px;
+}
+
+.search-bar input::placeholder { color: var(--text-dim); }
+.search-bar svg { color: var(--text-dim); }
+
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600;
+  color: #000; cursor: pointer;
+}
+
+/* ===== VIEWS ===== */
+.view-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 28px 40px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+.view-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.view-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.view-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 700px;
+}
+
+/* ===== BUTTONS ===== */
 .btn-primary {
-  background: var(--blue);
-  color: #fff;
-  box-shadow: 0 2px 12px rgba(100,153,245,0.3);
-}
-.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.btn-ghost { background: var(--gl2); border: 1px solid var(--bd2); color: var(--t2); }
-.btn-ghost:hover { background: var(--gl3); color: var(--t1); }
-.btn-danger { background: var(--coral-d); border: 1px solid rgba(240,128,128,0.25); color: var(--coral); }
-.btn-danger:hover { background: rgba(240,128,128,0.2); }
-.btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
-.btn svg, .btn .ico { width: 13px; height: 13px; }
-
-/* ── PAGE CONTENT ── */
-.page { padding: 24px 28px; animation: fadein 0.25s ease; }
-.page.hidden { display: none; }
-@keyframes fadein { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
-
-/* ── SETUP SCREEN ── */
-#setup {
-  min-height: 100vh; display: flex;
-  align-items: center; justify-content: center;
-  padding: 2rem; position: relative; z-index: 100;
-}
-.setup-card {
-  background: var(--b2); border: 1px solid var(--bd2);
-  border-radius: var(--r4); padding: 2.25rem;
-  max-width: 580px; width: 100%;
-  box-shadow: var(--shadow2);
-}
-.setup-logo-row {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 1.75rem;
-}
-.setup-logo-icon {
-  width: 42px; height: 42px; border-radius: var(--r2);
-  background: linear-gradient(135deg, var(--blue), var(--violet));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; box-shadow: 0 0 20px rgba(100,153,245,0.3);
-}
-.setup-logo-label { font-size: 22px; font-weight: 700; color: var(--t1); }
-.setup-card h2 { font-size: 19px; font-weight: 700; color: var(--t1); margin-bottom: 6px; }
-.setup-card p { color: var(--t2); font-size: 13px; line-height: 1.65; margin-bottom: 1.5rem; }
-.setup-steps {
-  background: var(--b3); border: 1px solid var(--bd);
-  border-radius: var(--r2); padding: 1rem 1.25rem; margin-bottom: 1.5rem;
-}
-.step {
-  display: flex; gap: 12px; align-items: flex-start;
-  padding: 8px 0; border-bottom: 1px solid var(--bd);
-}
-.step:last-child { border-bottom: none; padding-bottom: 0; }
-.step-n {
-  width: 20px; height: 20px; border-radius: 50%;
-  background: var(--blue-d); color: var(--blue);
-  font-size: 10px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 1px;
-}
-.step-text { font-size: 12px; color: var(--t2); line-height: 1.55; }
-.step-text strong { color: var(--t1); font-weight: 600; }
-.step-text code {
-  background: var(--b4); border: 1px solid var(--bd);
-  padding: 1px 5px; border-radius: 4px;
-  font-family: var(--mono); font-size: 11px; color: var(--cyan);
-}
-.setup-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.25rem; }
-.setup-field label {
-  display: block; font-size: 10px; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--t3); margin-bottom: 5px; font-weight: 600;
-}
-.setup-field input {
-  width: 100%; padding: 9px 12px;
-  background: var(--b3); border: 1px solid var(--bd2);
-  border-radius: var(--r); color: var(--t1); font-family: var(--mono);
-  font-size: 12px; outline: none; transition: border 0.2s;
-}
-.setup-field input:focus { border-color: var(--blue); }
-.setup-field input::placeholder { color: var(--t4); }
-.setup-connect {
-  width: 100%; padding: 11px; background: var(--blue); color: #fff;
-  border: none; border-radius: var(--r); font-family: var(--font);
-  font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px;
-  box-shadow: 0 3px 16px rgba(100,153,245,0.35); transition: all 0.2s;
-}
-.setup-connect:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.setup-demo {
-  width: 100%; padding: 9px;
-  background: transparent; border: 1px solid var(--bd2);
-  border-radius: var(--r); color: var(--t2); font-family: var(--font);
-  font-size: 13px; cursor: pointer; transition: all 0.15s;
-}
-.setup-demo:hover { background: var(--gl2); color: var(--t1); }
-.setup-note { font-size: 10px; color: var(--t4); text-align: center; margin-top: 10px; }
-.setup-note a { color: var(--blue); text-decoration: none; }
-
-/* ── KPI CARDS ── */
-.kpi-grid { display: grid; gap: 10px; margin-bottom: 20px; }
-.g4 { grid-template-columns: repeat(4, 1fr); }
-.g5 { grid-template-columns: repeat(5, 1fr); }
-.g3 { grid-template-columns: repeat(3, 1fr); }
-.g2 { grid-template-columns: repeat(2, 1fr); }
-.kpi {
-  background: var(--gl); border: 1px solid var(--bd);
-  border-radius: var(--r2); padding: 16px 18px;
-  transition: border 0.2s, background 0.2s; cursor: default;
-  position: relative; overflow: hidden;
-}
-.kpi:hover { background: var(--gl2); border-color: var(--bd2); }
-.kpi::before {
-  content: ''; position: absolute;
-  top: 0; left: 0; right: 0; height: 2px;
-  opacity: 0; transition: opacity 0.2s;
-}
-.kpi:hover::before { opacity: 1; }
-.kpi.c-blue::before  { background: var(--blue); }
-.kpi.c-green::before { background: var(--green); }
-.kpi.c-amber::before { background: var(--amber); }
-.kpi.c-coral::before { background: var(--coral); }
-.kpi.c-violet::before{ background: var(--violet); }
-.kpi.c-cyan::before  { background: var(--cyan); }
-.kpi-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--t3); font-weight: 600; margin-bottom: 8px; }
-.kpi-val { font-family: var(--mono); font-size: 28px; font-weight: 500; line-height: 1; margin-bottom: 4px; }
-.kpi-sub { font-size: 11px; color: var(--t3); }
-.kpi-bar { height: 2px; background: rgba(255,255,255,0.05); border-radius: 1px; margin-top: 12px; overflow: hidden; }
-.kpi-fill { height: 100%; border-radius: 1px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
-
-/* ── PANELS ── */
-.panel {
-  background: var(--gl); border: 1px solid var(--bd);
-  border-radius: var(--r2); overflow: hidden; margin-bottom: 14px;
-  transition: border 0.2s;
-}
-.panel:hover { border-color: var(--bd2); }
-.panel-head {
-  padding: 13px 18px;
-  border-bottom: 1px solid var(--bd);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.panel-title {
-  font-size: 13px; font-weight: 600; color: var(--t1);
-  display: flex; align-items: center; gap: 8px;
-}
-.panel-body { padding: 16px 18px; }
-.panel-body-flush { padding: 0 18px 14px; }
-
-/* ── PILLS / BADGES ── */
-.pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 10px; font-weight: 600; padding: 3px 8px;
-  border-radius: 20px; letter-spacing: 0.2px; white-space: nowrap;
-}
-.pill-blue   { background: var(--blue-d);   color: var(--blue);   border: 1px solid rgba(100,153,245,0.2); }
-.pill-cyan   { background: var(--cyan-d);   color: var(--cyan);   border: 1px solid rgba(79,195,247,0.2); }
-.pill-green  { background: var(--green-d);  color: var(--green);  border: 1px solid rgba(76,206,172,0.2); }
-.pill-amber  { background: var(--amber-d);  color: var(--amber);  border: 1px solid rgba(246,194,106,0.2); }
-.pill-coral  { background: var(--coral-d);  color: var(--coral);  border: 1px solid rgba(240,128,128,0.2); }
-.pill-violet { background: var(--violet-d); color: var(--violet); border: 1px solid rgba(179,157,250,0.2); }
-.pill-pink   { background: var(--pink-d);   color: var(--pink);   border: 1px solid rgba(244,114,182,0.2); }
-.pill-teal   { background: var(--teal-d);   color: var(--teal);   border: 1px solid rgba(45,212,191,0.2); }
-.pill-gray   { background: var(--gl2); color: var(--t2); border: 1px solid var(--bd2); }
-
-/* ── PRIO DOT ── */
-.pdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
-.pdot-critical { background: var(--coral); box-shadow: 0 0 4px var(--coral); }
-.pdot-high     { background: var(--amber); }
-.pdot-medium   { background: var(--blue); }
-.pdot-low      { background: var(--t4); }
-
-/* ── TABLES ── */
-.tbl { width: 100%; border-collapse: collapse; }
-.tbl th {
-  padding: 8px 14px; text-align: left;
-  font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--t3); font-weight: 600;
-  border-bottom: 1px solid var(--bd); background: var(--gl);
+  background: var(--cyan);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: background 0.15s;
   white-space: nowrap;
 }
-.tbl td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--t2); vertical-align: middle; }
-.tbl tbody tr { cursor: pointer; transition: background 0.1s; }
-.tbl tbody tr:hover td { background: rgba(255,255,255,0.025); color: var(--t1); }
-.tbl tbody tr:last-child td { border-bottom: none; }
-.tbl tbody tr.overdue td { border-left: 2px solid var(--coral); }
-.t-id { font-family: var(--mono); font-size: 11px; color: var(--blue); font-weight: 500; }
-.t-title { color: var(--t1); font-weight: 500; font-size: 13px; }
-.t-desc { font-size: 11px; color: var(--t3); margin-top: 2px; }
 
-/* ── KANBAN ── */
-.kanban-wrap {
-  display: flex; gap: 12px;
-  overflow-x: auto; padding-bottom: 12px;
-  min-height: 500px; align-items: flex-start;
-}
-.kanban-wrap::-webkit-scrollbar { height: 5px; }
-.kanban-col {
-  min-width: 260px; width: 260px; flex-shrink: 0;
-  background: var(--b2); border: 1px solid var(--bd);
-  border-radius: var(--r2); overflow: hidden;
-}
-.kanban-col-head {
-  padding: 10px 14px; border-bottom: 1px solid var(--bd);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.kanban-col-name {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--t2);
-  display: flex; align-items: center; gap: 8px;
-}
-.kanban-col-bar { height: 3px; border-radius: 2px; margin: 0 0 8px; }
-.kanban-cards {
-  padding: 8px; display: flex; flex-direction: column; gap: 6px;
-  min-height: 80px;
-}
-.kanban-card {
-  background: var(--b3); border: 1px solid var(--bd);
-  border-radius: var(--r); padding: 10px 12px;
-  cursor: pointer; transition: all 0.15s;
-  position: relative;
-}
-.kanban-card:hover { border-color: var(--bd2); background: var(--b4); transform: translateY(-1px); box-shadow: var(--shadow); }
-.kanban-card.dragging { opacity: 0.5; }
-.kanban-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.kanban-card-title { font-size: 12px; font-weight: 600; color: var(--t1); line-height: 1.4; }
-.kanban-card-id { font-family: var(--mono); font-size: 10px; color: var(--t3); margin-bottom: 5px; }
-.kanban-card-desc { font-size: 11px; color: var(--t3); line-height: 1.4; margin-bottom: 7px; }
-.kanban-card-foot {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-top: 8px; flex-wrap: wrap; gap: 4px;
-}
-.kanban-card-due { font-family: var(--mono); font-size: 10px; }
-.kanban-add-card {
-  margin: 4px 8px 8px;
-  padding: 6px; border-radius: var(--r);
-  border: 1.5px dashed var(--bd2);
-  background: none; color: var(--t3); width: calc(100% - 16px);
-  font-family: var(--font); font-size: 12px; cursor: pointer;
-  transition: all 0.15s; display: flex; align-items: center; gap: 6px;
-  justify-content: center;
-}
-.kanban-add-card:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-d); }
+.btn-primary:hover { background: #06b6d4; }
 
-/* ── UAR PIPELINE ── */
-.uar-pipeline {
-  display: grid; grid-template-columns: repeat(6, 1fr);
-  gap: 8px; margin-bottom: 16px;
-}
-.uar-stage {
-  background: var(--gl); border: 1px solid var(--bd);
-  border-radius: var(--r2); padding: 14px 8px; text-align: center;
-  cursor: pointer; transition: all 0.2s;
-}
-.uar-stage:hover { border-color: var(--bd2); background: var(--gl2); }
-.uar-stage.done { background: var(--green-d); border-color: rgba(76,206,172,0.25); }
-.uar-stage.active { background: var(--blue-d); border-color: rgba(100,153,245,0.3); }
-.uar-stage.pending { opacity: 0.5; }
-.uar-stage-icon { font-size: 20px; margin-bottom: 7px; }
-.uar-stage-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--t2); }
-.uar-stage.done .uar-stage-label { color: var(--green); }
-.uar-stage.active .uar-stage-label { color: var(--blue); }
-.uar-stage-date { font-size: 10px; color: var(--t3); margin-top: 4px; font-family: var(--mono); }
-
-/* ── FEDRAMP PIPELINE ── */
-.fed-pipeline {
-  display: flex; border-radius: var(--r); overflow: hidden;
-  border: 1px solid var(--bd); margin-bottom: 4px;
-}
-.fed-step {
-  flex: 1; padding: 9px 6px; text-align: center;
-  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-  border-right: 1px solid var(--bd); cursor: pointer; transition: all 0.2s;
-}
-.fed-step:last-child { border-right: none; }
-.fed-step.done { background: var(--green-d); color: var(--green); }
-.fed-step.active { background: var(--violet-d); color: var(--violet); }
-.fed-step.pending { color: var(--t4); }
-.fed-step:hover { filter: brightness(1.3); }
-
-/* ── SLIDE PANEL ── */
-.panel-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
-  z-index: 200; opacity: 0; pointer-events: none;
-  transition: opacity 0.25s; backdrop-filter: blur(4px);
-}
-.panel-overlay.open { opacity: 1; pointer-events: all; }
-.side-panel {
-  position: fixed; top: 0; right: 0; bottom: 0;
-  width: 680px; max-width: 96vw;
-  background: var(--b1);
-  border-left: 1px solid var(--bd2);
-  z-index: 201;
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-  display: flex; flex-direction: column;
-  box-shadow: -8px 0 40px rgba(0,0,0,0.5);
-}
-.side-panel.open { transform: none; }
-.sp-head {
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--bd);
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-}
-.sp-title { font-size: 15px; font-weight: 700; color: var(--t1); }
-.sp-close {
-  width: 28px; height: 28px; border-radius: var(--r);
-  background: var(--gl2); border: 1px solid var(--bd2);
-  cursor: pointer; color: var(--t2); font-size: 14px;
-  display: flex; align-items: center; justify-content: center;
+.btn-ghost {
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-main);
   transition: all 0.15s;
 }
-.sp-close:hover { background: var(--coral-d); color: var(--coral); }
-.sp-body { flex: 1; overflow-y: auto; padding: 20px 22px; }
-.sp-foot {
-  padding: 14px 22px;
-  border-top: 1px solid var(--bd);
-  display: flex; gap: 8px; justify-content: flex-end;
+
+.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-danger { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; }
+.btn-danger:hover { background: rgba(248,113,113,0.25); }
+
+/* ===== KPI GRID ===== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.kpi-card:hover { border-color: rgba(34,211,238,0.3); }
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.kpi-card[data-color="cyan"]::before { background: var(--cyan); }
+.kpi-card[data-color="amber"]::before { background: var(--amber); }
+.kpi-card[data-color="emerald"]::before { background: var(--emerald); }
+.kpi-card[data-color="violet"]::before { background: var(--violet); }
+.kpi-card[data-color="red"]::before { background: var(--red); }
+
+.kpi-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+}
+
+.kpi-sub { font-size: 10px; color: var(--text-dim); margin-bottom: 10px; }
+
+.kpi-sparkbar { height: 3px; background: var(--bg-card2); border-radius: 2px; overflow: hidden; }
+.kpi-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+/* ===== CHARTS ===== */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ===== BADGES ===== */
+.badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.badge-live { background: rgba(52,211,153,0.15); color: var(--emerald); border: 1px solid rgba(52,211,153,0.3); }
+.badge-amber { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+.badge-red { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.badge-cyan { background: rgba(34,211,238,0.15); color: var(--cyan); border: 1px solid rgba(34,211,238,0.3); }
+.badge-violet { background: rgba(167,139,250,0.15); color: var(--violet); border: 1px solid rgba(167,139,250,0.3); }
+
+/* ===== HEALTH GRID ===== */
+.health-grid { display: flex; flex-direction: column; gap: 14px; }
+.health-row { display: flex; align-items: center; gap: 12px; }
+.health-label { font-size: 11px; color: var(--text-muted); width: 130px; flex-shrink: 0; }
+.health-bar { flex: 1; height: 4px; background: var(--bg-card2); border-radius: 2px; overflow: hidden; }
+.health-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+.health-pct { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); width: 32px; text-align: right; }
+
+/* ===== TICKET MINI LIST ===== */
+.ticket-list-mini { display: flex; flex-direction: column; gap: 0; }
+.ticket-mini {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  gap: 10px;
+}
+.ticket-mini:hover .tm-title { color: var(--cyan); }
+.ticket-mini:last-child { border-bottom: none; }
+.tm-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.tm-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.tm-info { min-width: 0; }
+.tm-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.15s; }
+.tm-sub { font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); }
+.tm-badge { font-family: var(--font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
+
+/* ===== PROCESS BANNER ===== */
+.process-banner {
+  background: rgba(34,211,238,0.04);
+  border: 1px solid rgba(34,211,238,0.12);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.process-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.process-banner-header:hover { background: rgba(34,211,238,0.06); }
+
+.process-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.collapse-icon {
+  color: var(--text-dim);
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.collapse-icon.rotated { transform: rotate(-90deg); }
+
+.process-banner-body {
+  padding: 0 18px 16px;
+  border-top: 1px solid rgba(34,211,238,0.08);
+}
+
+.process-stages {
+  display: flex;
+  gap: 0;
+  margin: 16px 0 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.process-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 140px;
+  position: relative;
+  padding: 0 12px;
+  text-align: center;
+}
+
+.process-stage::after {
+  content: '';
+  position: absolute;
+  top: 14px; right: -1px;
+  width: 24px; height: 1px;
+  background: var(--border);
+}
+
+.process-stage:last-child::after { display: none; }
+
+.stage-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(34,211,238,0.15);
+  border: 1px solid rgba(34,211,238,0.3);
+  color: var(--cyan);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700;
+  margin-bottom: 8px;
   flex-shrink: 0;
 }
 
-/* panel tabs */
-.sp-tabs {
-  display: flex; gap: 0; margin-bottom: 18px;
-  background: var(--b3); border-radius: var(--r); padding: 3px;
-}
-.sp-tab {
-  flex: 1; padding: 7px 4px; text-align: center;
-  font-size: 11px; font-weight: 600; color: var(--t2);
-  cursor: pointer; border-radius: 6px; transition: all 0.15s;
-}
-.sp-tab.active { background: var(--b5); color: var(--t1); }
+.stage-title { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.stage-desc { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
 
-/* ── FORM ── */
-.fg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-.fg1 { margin-bottom: 14px; }
-.ff { grid-column: 1/-1; }
-.fl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--t3); font-weight: 600; display: block; margin-bottom: 5px; }
-.fi {
-  width: 100%; padding: 9px 12px;
-  background: var(--b3); border: 1px solid var(--bd2);
-  border-radius: var(--r); color: var(--t1); font-family: var(--font);
-  font-size: 13px; outline: none; transition: border 0.2s;
+.common-issues-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.ci-title { font-size: 10px; font-weight: 700; color: var(--amber); font-family: var(--font-mono); letter-spacing: 0.06em; margin-bottom: 6px; }
+.ci-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ci-tag {
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.2);
+  color: var(--amber);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: background 0.15s;
 }
-.fi:focus { border-color: var(--blue); }
-.fi::placeholder { color: var(--t4); }
-.fi.ta { resize: vertical; min-height: 80px; line-height: 1.5; font-family: var(--font); }
-.fi.mono-inp { font-family: var(--mono); font-size: 12px; }
-select.fi option { background: var(--b3); }
-.form-section { margin-bottom: 18px; }
-.form-section-hd {
-  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--t4); font-weight: 600; padding-bottom: 8px;
-  border-bottom: 1px solid var(--bd); margin-bottom: 12px;
+.ci-tag:hover { background: rgba(251,191,36,0.18); }
+
+/* ===== FILTER BAR ===== */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-/* chips */
-.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.chip {
-  padding: 4px 9px; border-radius: 20px;
-  background: var(--amber-d); border: 1px solid rgba(246,194,106,0.2);
-  color: var(--amber); font-size: 11px; cursor: pointer; transition: all 0.12s;
-}
-.chip:hover { background: rgba(246,194,106,0.2); transform: scale(1.02); }
-
-/* evidence */
-.ev-drop {
-  border: 2px dashed var(--bd2); border-radius: var(--r2);
-  padding: 20px; text-align: center; cursor: pointer;
-  transition: all 0.2s; margin-bottom: 10px;
-}
-.ev-drop:hover { border-color: var(--blue); background: var(--blue-d); }
-.ev-drop-icon { font-size: 28px; opacity: 0.3; margin-bottom: 6px; }
-.ev-drop-text { font-size: 12px; color: var(--t3); }
-.ev-list { display: flex; flex-direction: column; gap: 5px; }
-.ev-item {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--b3); border: 1px solid var(--bd);
-  border-radius: var(--r); padding: 7px 11px;
-}
-.ev-name { flex: 1; font-size: 12px; color: var(--t1); }
-.ev-meta { font-size: 10px; color: var(--t3); font-family: var(--mono); }
-.ev-del { background: none; border: none; color: var(--t3); cursor: pointer; font-size: 13px; }
-.ev-del:hover { color: var(--coral); }
-
-/* notes */
-.note-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.note-input-row textarea { flex: 1; min-height: 65px; }
-.note-add-btn {
-  padding: 8px 12px; background: var(--blue); border: none;
-  border-radius: var(--r); color: #fff; font-family: var(--font);
-  font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
-}
-.notes-list { display: flex; flex-direction: column; gap: 6px; }
-.note-item {
-  background: var(--b3); border: 1px solid var(--bd);
-  border-radius: var(--r); padding: 10px 12px;
-  border-left: 2px solid var(--blue);
-}
-.note-body { font-size: 12px; color: var(--t2); line-height: 1.55; white-space: pre-wrap; }
-.note-time { font-size: 10px; color: var(--t3); font-family: var(--mono); margin-top: 4px; }
-
-/* timeline */
-.tl { display: flex; flex-direction: column; }
-.tl-item { display: flex; gap: 12px; padding: 8px 0; position: relative; }
-.tl-item::before {
-  content: ''; position: absolute;
-  left: 7px; top: 24px; bottom: -8px;
-  width: 1px; background: var(--bd);
-}
-.tl-item:last-child::before { display: none; }
-.tl-dot { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--b1); margin-top: 1px; }
-.tl-body { flex: 1; }
-.tl-event { font-size: 12px; font-weight: 500; color: var(--t1); }
-.tl-time { font-size: 10px; color: var(--t3); font-family: var(--mono); margin-top: 2px; }
-.tl-note { font-size: 11px; color: var(--t2); margin-top: 5px; background: var(--b3); padding: 6px 9px; border-radius: var(--r); }
-
-/* sticky notes */
-.stickies-wrap { position: relative; min-height: 500px; }
-.sticky {
-  position: absolute; border-radius: var(--r2);
-  padding: 12px 14px; min-width: 200px; max-width: 280px;
-  box-shadow: var(--shadow); cursor: grab; user-select: none;
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-.sticky:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.5); transform: rotate(0.5deg); }
-.sticky.yellow  { background: rgba(246,194,106,0.15); border: 1px solid rgba(246,194,106,0.3); }
-.sticky.blue    { background: rgba(100,153,245,0.12); border: 1px solid rgba(100,153,245,0.25); }
-.sticky.green   { background: rgba(76,206,172,0.12); border: 1px solid rgba(76,206,172,0.25); }
-.sticky.pink    { background: rgba(244,114,182,0.12); border: 1px solid rgba(244,114,182,0.25); }
-.sticky.violet  { background: rgba(179,157,250,0.12); border: 1px solid rgba(179,157,250,0.25); }
-.sticky-title { font-size: 12px; font-weight: 700; color: var(--t1); margin-bottom: 6px; }
-.sticky-body { font-size: 12px; color: var(--t2); line-height: 1.5; }
-.sticky-del {
-  position: absolute; top: 7px; right: 8px;
-  background: none; border: none; color: var(--t3);
-  cursor: pointer; font-size: 13px; opacity: 0;
-  transition: opacity 0.15s; padding: 2px;
-}
-.sticky:hover .sticky-del { opacity: 1; }
-.sticky-del:hover { color: var(--coral); }
-
-/* ── ALERT BAR ── */
-.alert-bar {
-  background: rgba(246,194,106,0.07); border: 1px solid rgba(246,194,106,0.2);
-  border-radius: var(--r); padding: 9px 14px; margin-bottom: 16px;
-  font-size: 12px; color: var(--amber);
-  display: flex; align-items: center; gap: 8px;
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-group label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.filter-group select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
 }
 
-/* ── ACTIVITY FEED ── */
-.act-feed { }
-.act-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+/* ===== TICKET GRID ===== */
+.ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
 }
-.act-item:last-child { border-bottom: none; }
-.act-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.act-text { flex: 1; font-size: 12px; color: var(--t2); }
-.act-text strong { color: var(--t1); font-weight: 500; }
-.act-time { font-size: 10px; color: var(--t3); font-family: var(--mono); white-space: nowrap; }
 
-/* ── EMPTY STATE ── */
-.empty { text-align: center; padding: 40px 20px; color: var(--t3); }
-.empty-icon { font-size: 30px; opacity: 0.25; margin-bottom: 10px; }
-.empty-text { font-size: 13px; margin-bottom: 14px; }
-
-/* ── CHART ── */
-.chart-wrap { position: relative; height: 180px; }
-
-/* ── HEALTH MINI BARS ── */
-.domain-health-row {
-  display: flex; align-items: center;
-  padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+.ticket-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
 }
-.domain-health-row:last-child { border-bottom: none; }
-.dhrow-label { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; font-weight: 500; color: var(--t1); }
-.dhrow-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.dhrow-bar { width: 80px; height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; margin-right: 8px; }
-.dhrow-fill { height: 100%; border-radius: 2px; }
-.dhrow-count { font-family: var(--mono); font-size: 11px; color: var(--t3); min-width: 38px; text-align: right; }
 
-/* ── IBTN ── */
-.ibtn {
-  background: var(--gl2); border: 1px solid var(--bd);
-  border-radius: 6px; padding: 4px 9px;
-  font-size: 11px; color: var(--t2); cursor: pointer;
-  font-family: var(--font); transition: all 0.15s;
+.ticket-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
 }
-.ibtn:hover { background: var(--gl3); color: var(--t1); }
-.ibtn.danger:hover { color: var(--coral); border-color: rgba(240,128,128,0.3); }
 
-/* ── TOAST ── */
+.ticket-card:hover { border-color: rgba(34,211,238,0.3); transform: translateY(-1px); }
+
+.ticket-card[data-priority="Critical"]::before { background: var(--red); }
+.ticket-card[data-priority="High"]::before { background: var(--amber); }
+.ticket-card[data-priority="Medium"]::before { background: var(--blue); }
+.ticket-card[data-priority="Low"]::before { background: var(--text-dim); }
+
+.tc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.tc-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; flex: 1; }
+.tc-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+.tc-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.tc-id { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+.tc-workstream { font-family: var(--font-mono); font-size: 9px; color: var(--cyan); background: rgba(34,211,238,0.08); padding: 2px 6px; border-radius: 3px; }
+
+.tc-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.tc-footer { display: flex; justify-content: space-between; align-items: center; }
+.tc-date { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+
+/* Status badges */
+.status-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-Backlog { background: rgba(107,114,128,0.2); color: #9ca3af; }
+.status-InProgress { background: rgba(34,211,238,0.15); color: var(--cyan); }
+.status-Review { background: rgba(167,139,250,0.15); color: var(--violet); }
+.status-Blocked { background: rgba(248,113,113,0.15); color: var(--red); }
+.status-Done { background: rgba(52,211,153,0.15); color: var(--emerald); }
+
+.priority-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.priority-Critical { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.priority-High { background: rgba(251,191,36,0.12); color: var(--amber); }
+.priority-Medium { background: rgba(96,165,250,0.12); color: var(--blue); }
+.priority-Low { background: rgba(107,114,128,0.1); color: #9ca3af; }
+
+/* ===== UAR SECTION ===== */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-header h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+
+.uar-campaigns-section { margin-bottom: 24px; }
+
+.uar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+
+.uar-campaign-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.uar-campaign-card:hover { border-color: rgba(52,211,153,0.3); }
+
+.uar-camp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
+.uar-camp-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.uar-camp-type { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+
+.uar-phase-track {
+  display: flex;
+  gap: 3px;
+  margin: 12px 0 8px;
+}
+
+.uar-phase-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-card2);
+}
+
+.uar-phase-dot.active { background: var(--emerald); }
+.uar-phase-dot.done { background: rgba(52,211,153,0.4); }
+
+.uar-camp-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); }
+
+/* ===== FEDRAMP TRACKER ===== */
+.fedramp-tracker-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.auth-journey {
+  display: flex;
+  gap: 0;
+  position: relative;
+  margin-top: 12px;
+}
+
+.auth-phase {
+  flex: 1;
+  position: relative;
+  padding: 12px 16px 12px 0;
+}
+
+.auth-phase::after {
+  content: '→';
+  position: absolute;
+  right: -6px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  font-size: 16px;
+  z-index: 1;
+}
+
+.auth-phase:last-child::after { display: none; }
+
+.ap-block {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  transition: border-color 0.15s;
+}
+
+.ap-block.current {
+  border-color: var(--cyan);
+  background: rgba(34,211,238,0.05);
+  box-shadow: 0 0 20px rgba(34,211,238,0.1);
+}
+
+.ap-block.complete {
+  border-color: rgba(52,211,153,0.3);
+  background: rgba(52,211,153,0.04);
+}
+
+.ap-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(34,211,238,0.15);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 6px;
+}
+
+.ap-block.complete .ap-num { background: rgba(52,211,153,0.2); color: var(--emerald); }
+
+.ap-label { font-size: 10px; font-weight: 600; color: var(--text); }
+.ap-sub { font-size: 9px; color: var(--text-muted); margin-top: 3px; font-family: var(--font-mono); }
+
+/* ===== CONMON ===== */
+.conmon-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.conmon-items { display: flex; flex-direction: column; gap: 0; }
+.conmon-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.conmon-item:last-child { border-bottom: none; }
+
+.conmon-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ci-green { background: rgba(52,211,153,0.15); color: var(--emerald); }
+.ci-amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+.ci-blue { background: rgba(96,165,250,0.15); color: var(--blue); }
+.ci-violet { background: rgba(167,139,250,0.15); color: var(--violet); }
+.ci-red { background: rgba(248,113,113,0.15); color: var(--red); }
+
+.conmon-text { flex: 1; }
+.conmon-text strong { font-size: 12px; color: var(--text); display: block; margin-bottom: 2px; }
+.conmon-text span { font-size: 11px; color: var(--text-muted); }
+.conmon-due { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+
+/* ===== KANBAN ===== */
+.kanban-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.kanban-filters { display: flex; gap: 6px; }
+
+.kanban-filter-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.kanban-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.kanban-filter-btn.active { background: rgba(34,211,238,0.1); border-color: var(--cyan); color: var(--cyan); }
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  min-height: 500px;
+}
+
+.kanban-col {
+  background: rgba(17,19,24,0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+}
+
+.kanban-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.kanban-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+}
+
+.kanban-col-count {
+  background: var(--bg-card2);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.kanban-cards {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100px;
+}
+
+.kanban-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: grab;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.kanban-card:hover { border-color: rgba(34,211,238,0.3); transform: translateY(-1px); }
+.kanban-card:active { cursor: grabbing; }
+.kanban-card.dragging { opacity: 0.5; }
+.kanban-card[data-priority="Critical"] { border-left-color: var(--red); }
+.kanban-card[data-priority="High"] { border-left-color: var(--amber); }
+.kanban-card[data-priority="Medium"] { border-left-color: var(--blue); }
+.kanban-card[data-priority="Low"] { border-left-color: var(--text-dim); }
+
+.kc-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; line-height: 1.3; }
+.kc-meta { display: flex; gap: 5px; flex-wrap: wrap; }
+.kc-workstream { font-family: var(--font-mono); font-size: 8px; color: var(--cyan); background: rgba(34,211,238,0.08); padding: 2px 5px; border-radius: 3px; }
+
+/* ===== NOTES ===== */
+.notes-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+.sticky-color-btn { border: none; border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font-main); transition: transform 0.1s; }
+.sticky-color-btn:hover { transform: scale(1.03); }
+
+.notes-board { display: flex; flex-direction: column; gap: 20px; }
+.note-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.note-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.note-section-title { font-size: 12px; font-weight: 700; color: var(--text); background: none; border: none; outline: none; font-family: var(--font-main); cursor: text; width: 100%; padding: 2px 4px; border-radius: 4px; }
+.note-section-title:focus { background: rgba(255,255,255,0.04); }
+
+.stickies-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.sticky-note { width: 180px; min-height: 140px; border-radius: 8px; padding: 12px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.3); transition: transform 0.15s; }
+.sticky-note:hover { transform: rotate(-0.5deg) scale(1.02); }
+.sticky-note textarea { width: 100%; height: 100px; background: transparent; border: none; outline: none; resize: none; font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: inherit; }
+.sticky-note-delete { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.2); border: none; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; color: inherit; opacity: 0; transition: opacity 0.15s; }
+.sticky-note:hover .sticky-note-delete { opacity: 1; }
+
+/* ===== MODAL ===== */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; animation: modal-in 0.2s ease; }
+.modal-large { max-width: 800px; }
+
+@keyframes modal-in { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.modal-header h2 { font-size: 16px; font-weight: 700; color: var(--text); }
+.modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 20px; line-height: 1; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.15s; }
+.modal-close:hover { background: rgba(248,113,113,0.15); color: var(--red); }
+.modal-body { padding: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--border); }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full-width { grid-column: 1 / -1; }
+.form-group label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--font-mono); }
+.form-group input, .form-group select, .form-group textarea { background: var(--bg-card2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; padding: 9px 12px; outline: none; font-family: var(--font-main); transition: border-color 0.15s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: rgba(34,211,238,0.4); }
+.form-group textarea { resize: vertical; }
+.form-group select { cursor: pointer; }
+
+.common-issues-panel { margin-top: 14px; padding: 12px; background: rgba(251,191,36,0.04); border: 1px solid rgba(251,191,36,0.12); border-radius: 8px; }
+.ci-panel-title { font-size: 10px; font-weight: 700; color: var(--amber); font-family: var(--font-mono); }
+
+/* ===== DETAIL MODAL ===== */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.detail-field { display: flex; flex-direction: column; gap: 4px; }
+.detail-field.full { grid-column: 1 / -1; }
+.detail-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); }
+.detail-value { font-size: 13px; color: var(--text); }
+.detail-value-mono { font-family: var(--font-mono); font-size: 12px; color: var(--cyan); }
+.detail-text { font-size: 12px; color: var(--text-muted); line-height: 1.5; background: var(--bg-card2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; min-height: 60px; white-space: pre-wrap; }
+
+/* ===== TOAST ===== */
 .toast {
-  position: fixed; bottom: 20px; right: 20px; z-index: 999;
-  background: var(--b3); border: 1px solid var(--bd2);
-  border-radius: var(--r2); padding: 10px 16px;
-  font-size: 12px; color: var(--t1); box-shadow: var(--shadow);
-  display: flex; align-items: center; gap: 8px;
-  transform: translateY(60px); opacity: 0;
-  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cyan);
+  border-radius: 8px;
+  padding: 12px 18px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  z-index: 500;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.toast.show { transform: none; opacity: 1; }
 
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 2px; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-icon { color: var(--cyan); font-size: 18px; }
+.toast-msg { font-size: 13px; font-weight: 500; }
 
-/* grid helpers */
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-.row-65 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .menu-toggle { display: block; }
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .charts-row { grid-template-columns: 1fr; }
+  .kanban-board { overflow-x: auto; grid-template-columns: repeat(5, 260px); }
+}
 
-/* module color tag */
-.mod-tag {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 10px; font-weight: 700; padding: 2px 7px;
-  border-radius: 20px;
+@media (max-width: 640px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col, .form-grid, .detail-grid { grid-template-columns: 1fr; }
+  .topbar-right .search-bar { display: none; }
 }
 </style>
 </head>
 <body>
 
-<!-- SETUP SCREEN -->
-<div id="setup">
-  <div class="setup-card">
-    <div class="setup-logo-row">
-      <div class="setup-logo-icon">🔐</div>
-      <div>
-        <div class="setup-logo-name" style="font-size:22px;font-weight:800">Nexus Ops</div>
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--t3)">Security & Compliance Command</div>
-      </div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     </div>
-    <h2>Connect to your database</h2>
-    <p>Your data lives in Render's managed PostgreSQL via Supabase client — encrypted at rest, no data on-device. The setup takes under 5 minutes and you only do it once.</p>
+    <div class="logo-text">GALATIA <span class="logo-accent">OPS</span></div>
+  </div>
 
-    <div class="setup-steps">
-      <div class="step">
-        <div class="step-n">1</div>
-        <div class="step-text">Go to <strong>render.com</strong>, create a free PostgreSQL database. Copy the <strong>External Database URL</strong>.</div>
-      </div>
-      <div class="step">
-        <div class="step-n">2</div>
-        <div class="step-text">Go to <strong>supabase.com</strong>, create a project. Under <strong>Settings → Database</strong>, connect it to your Render Postgres using the external URL, or just use Supabase's built-in Postgres (simpler).</div>
-      </div>
-      <div class="step">
-        <div class="step-n">3</div>
-        <div class="step-text">In Supabase <strong>SQL Editor</strong>, run the included <code>schema.sql</code> file to create all tables.</div>
-      </div>
-      <div class="step">
-        <div class="step-n">4</div>
-        <div class="step-text">Paste your Supabase <strong>Project URL</strong> and <strong>anon key</strong> below. Credentials stay only in your browser's localStorage.</div>
-      </div>
-    </div>
+  <div class="sidebar-section-label">Main</div>
+  <div class="nav-items">
+    <a href="#" class="nav-item active" data-view="dashboard">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a href="#" class="nav-item" data-view="tickets">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+      Tickets
+    </a>
+    <a href="#" class="nav-item" data-view="kanban">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3zM9 3v18M15 3v18"/></svg>
+      Kanban
+    </a>
+    <a href="#" class="nav-item" data-view="compliance">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      Compliance
+    </a>
+  </div>
 
-    <div class="setup-fields">
-      <div class="setup-field">
-        <label>Supabase Project URL</label>
-        <input type="text" id="sb-url" placeholder="https://xxxxxxxxxxxx.supabase.co"/>
-      </div>
-      <div class="setup-field">
-        <label>Supabase Anon Key</label>
-        <input type="text" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIs..."/>
-      </div>
-    </div>
+  <div class="sidebar-section-label">Workspace</div>
+  <div class="nav-items">
+    <a href="#" class="nav-item" data-view="notes">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><path d="M15 3v6h6"/><path d="M9 18h6"/><path d="M9 14h6"/><path d="M9 10h4"/></svg>
+      Scratchpad
+    </a>
+  </div>
 
-    <button class="setup-connect" onclick="connectDB()">🔌 Connect &amp; Launch Nexus Ops</button>
-    <button class="setup-demo" onclick="launchDemo()">Continue in demo mode (data stored locally only)</button>
-    <div class="setup-note">Credentials stored in localStorage only. <a href="https://supabase.com/security" target="_blank">Supabase security →</a></div>
+  <div class="sidebar-status">
+    <div class="status-dot"></div>
+    <div class="status-text">SEC-OPS SYSTEM LIVE</div>
+  </div>
+
+  <div class="sidebar-db-info">
+    <div class="db-label">STORAGE</div>
+    <div class="db-indicator" id="dbIndicator">CONNECTING...</div>
   </div>
 </div>
 
-<!-- MAIN APP -->
-<div class="app" id="app" style="display:none">
-
-  <!-- SIDEBAR -->
-  <nav class="sidebar">
-    <div class="s-logo">
-      <div class="s-logo-mark">🔐</div>
-      <div class="s-logo-text">
-        <div class="s-logo-name">Nexus Ops</div>
-        <div class="s-logo-sub">Cmd Suite</div>
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="menu-toggle" id="menuToggle">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="breadcrumb" id="breadcrumb">DASHBOARD / OVERVIEW</div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search resources...">
       </div>
+      <div class="avatar">GN</div>
     </div>
+  </div>
 
-    <div class="s-nav">
-      <div class="s-section-label">Overview</div>
-      <button class="s-item active" id="ni-dashboard" onclick="nav('dashboard')">
-        <span class="s-item-icon">◫</span> Dashboard
-      </button>
-      <button class="s-item" id="ni-kanban" onclick="nav('kanban')">
-        <span class="s-item-icon">⊞</span> Kanban Board
-      </button>
-      <button class="s-item" id="ni-stickies" onclick="nav('stickies')">
-        <span class="s-item-icon">🗒</span> Sticky Notes
-      </button>
+  <div class="view-container">
+    
+    <div class="view active" id="view-dashboard">
+      <div class="view-header">
+        <h1>Global Security Posture</h1>
+        <div class="view-sub">Real-time telemetry and ticket distribution across Google Cloud and Identity workstreams.</div>
+      </div>
 
-      <div class="s-section-label" style="margin-top:8px">Modules</div>
-      <button class="s-item" id="ni-idam" onclick="nav('idam')">
-        <span class="s-item-icon" style="color:var(--idam-c)">⊙</span> IDAM
-        <span class="s-item-count count-muted" id="cnt-idam">0</span>
-      </button>
-      <button class="s-item" id="ni-servicenow" onclick="nav('servicenow')">
-        <span class="s-item-icon" style="color:var(--snow-c)">▣</span> ServiceNow / AD
-        <span class="s-item-count count-muted" id="cnt-servicenow">0</span>
-      </button>
-      <button class="s-item" id="ni-uar" onclick="nav('uar')">
-        <span class="s-item-icon" style="color:var(--uar-c)">◈</span> UAR Process
-        <span class="s-item-count count-ok" id="cnt-uar">–</span>
-      </button>
-      <button class="s-item" id="ni-fedramp" onclick="nav('fedramp')">
-        <span class="s-item-icon" style="color:var(--fed-c)">◉</span> FedRAMP
-        <span class="s-item-count count-muted" id="cnt-fedramp">0</span>
-      </button>
-      <button class="s-item" id="ni-gcp" onclick="nav('gcp')">
-        <span class="s-item-icon" style="color:var(--gcp-c)">◬</span> GCP
-        <span class="s-item-count count-warn" id="cnt-gcp">0</span>
-      </button>
-
-      <hr class="s-divider" style="margin-top:auto"/>
-
-      <div class="s-section-label">Tools</div>
-      <button class="s-item" onclick="exportCSV()">
-        <span class="s-item-icon">↓</span> Export CSV
-      </button>
-      <button class="s-item" onclick="exportJSON()">
-        <span class="s-item-icon">{ }</span> Export JSON
-      </button>
-    </div>
-
-    <div class="s-footer">
-      <div class="s-user">
-        <div class="s-avatar">AB</div>
-        <div class="s-user-info">
-          <div class="s-user-name">Alyssa</div>
-          <div class="s-user-role">BIS Intern · AI & Automation</div>
+      <div class="kpi-grid">
+        <div class="kpi-card" data-color="cyan">
+          <div class="kpi-label">Active Tickets</div>
+          <div class="kpi-value" id="kpi-active">0</div>
+          <div class="kpi-sub">Across all workstreams</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width: 70%; background: var(--cyan);"></div></div>
+        </div>
+        <div class="kpi-card" data-color="amber">
+          <div class="kpi-label">High Priority</div>
+          <div class="kpi-value" id="kpi-high">0</div>
+          <div class="kpi-sub">Escalated items</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width: 40%; background: var(--amber);"></div></div>
+        </div>
+        <div class="kpi-card" data-color="emerald">
+          <div class="kpi-label">Resolved (WTD)</div>
+          <div class="kpi-value" id="kpi-done">0</div>
+          <div class="kpi-sub">Week-to-date completion</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width: 85%; background: var(--emerald);"></div></div>
+        </div>
+        <div class="kpi-card" data-color="violet">
+          <div class="kpi-label">UAR Coverage</div>
+          <div class="kpi-value">94.2%</div>
+          <div class="kpi-sub">Q3 Certification Progress</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width: 94%; background: var(--violet);"></div></div>
+        </div>
+        <div class="kpi-card" data-color="red">
+          <div class="kpi-label">GCP SCC Alerts</div>
+          <div class="kpi-value">12</div>
+          <div class="kpi-sub">High/Critical findings</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width: 60%; background: var(--red);"></div></div>
+        </div>
+        <div class="kpi-card" data-color="cyan">
+          <div class="kpi-label">Mean Resolution</div>
+          <div class="kpi-value">4.2d</div>
+          <div class="kpi-sub">Last 30 days avg</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width: 50%; background: var(--cyan);"></div></div>
         </div>
       </div>
-      <div class="s-db-status">
-        <div class="db-pulse" id="db-pulse"></div>
-        <span id="db-status-label">Connecting…</span>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="card-header">
+            <h3>Workstream Distribution</h3>
+          </div>
+          <canvas id="distributionChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <h3>Velocity (Last 7 Days)</h3>
+          </div>
+          <canvas id="velocityChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-header">
+            <h3>Status Breakdown</h3>
+          </div>
+          <canvas id="statusChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <h3>Remediation Health</h3>
+            <span class="badge badge-live">Live Telemetry</span>
+          </div>
+          <div class="health-grid">
+            <div class="health-row">
+              <div class="health-label">Identity & Access</div>
+              <div class="health-bar"><div class="health-fill" style="width: 88%; background: var(--cyan);"></div></div>
+              <div class="health-pct">88%</div>
+            </div>
+            <div class="health-row">
+              <div class="health-label">Storage Buckets</div>
+              <div class="health-bar"><div class="health-fill" style="width: 72%; background: var(--amber);"></div></div>
+              <div class="health-pct">72%</div>
+            </div>
+            <div class="health-row">
+              <div class="health-label">Compute Engine</div>
+              <div class="health-bar"><div class="health-fill" style="width: 95%; background: var(--emerald);"></div></div>
+              <div class="health-pct">95%</div>
+            </div>
+            <div class="health-row">
+              <div class="health-label">Network / FW</div>
+              <div class="health-bar"><div class="health-fill" style="width: 45%; background: var(--red);"></div></div>
+              <div class="health-pct">45%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Recent Escalations</h3>
+            <button class="btn-ghost btn-sm" onclick="showView('tickets')">View All</button>
+          </div>
+          <div class="ticket-list-mini" id="miniTicketList">
+            </div>
+        </div>
       </div>
     </div>
-  </nav>
 
-  <!-- MAIN -->
-  <main class="main" id="main-area">
-
-    <!-- TOPBAR -->
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="topbar-title" id="tb-title">Dashboard</div>
-      </div>
-      <div class="topbar-right">
-        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export</button>
-        <button class="btn btn-primary btn-sm" onclick="openNewTicket()">+ New Ticket</button>
-      </div>
-    </div>
-
-    <!-- PAGE: DASHBOARD -->
-    <div class="page" id="pg-dashboard">
-      <div id="dash-content"></div>
-    </div>
-
-    <!-- PAGE: KANBAN -->
-    <div class="page hidden" id="pg-kanban">
-      <div id="kanban-content"></div>
-    </div>
-
-    <!-- PAGE: STICKIES -->
-    <div class="page hidden" id="pg-stickies">
-      <div class="row2" style="margin-bottom:14px">
+    <div class="view" id="view-tickets">
+      <div class="view-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
         <div>
-          <div style="font-size:20px;font-weight:700;color:var(--t1);margin-bottom:4px">🗒 Sticky Notes</div>
-          <div style="font-size:12px;color:var(--t3)">Quick notes, reminders, and scratchpad. Drag to reposition.</div>
+          <h1>Security Tickets</h1>
+          <div class="view-sub">Management of findings from LexisNexis audits and continuous GCP monitoring.</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="addSticky('yellow')">+ Yellow</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--blue)" onclick="addSticky('blue')">+ Blue</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="addSticky('green')">+ Green</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--pink)" onclick="addSticky('pink')">+ Pink</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--violet)" onclick="addSticky('violet')">+ Violet</button>
+        <button class="btn-primary" onclick="openAddTicketModal()">+ New Ticket</button>
+      </div>
+
+      <div class="process-banner">
+        <div class="process-banner-header" onclick="toggleProcessBanner()">
+          <div class="process-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Remediation Lifecycle
+          </div>
+          <div class="collapse-icon" id="processIcon">▼</div>
+        </div>
+        <div class="process-banner-body" id="processBody">
+          <div class="process-stages">
+            <div class="process-stage">
+              <div class="stage-num">01</div>
+              <div class="stage-title">Ingestion</div>
+              <div class="stage-desc">Finding identified via SCC, Audit, or Manual Scan.</div>
+            </div>
+            <div class="process-stage">
+              <div class="stage-num">02</div>
+              <div class="stage-title">Validation</div>
+              <div class="stage-desc">Confirmed impact and assigned to workstream.</div>
+            </div>
+            <div class="process-stage">
+              <div class="stage-num">03</div>
+              <div class="stage-title">Remediation</div>
+              <div class="stage-desc">Technical fixes applied (Terraform/Console).</div>
+            </div>
+            <div class="process-stage">
+              <div class="stage-num">04</div>
+              <div class="stage-title">Verification</div>
+              <div class="stage-desc">Evidence captured and audit logs verified.</div>
+            </div>
+            <div class="process-stage">
+              <div class="stage-num">05</div>
+              <div class="stage-title">Closure</div>
+              <div class="stage-desc">Ticket closed and SCC finding marked as resolved.</div>
+            </div>
+          </div>
+          <div class="common-issues-section">
+            <div class="ci-title">QUICK TEMPLATES (Click to add)</div>
+            <div class="ci-tags">
+              <div class="ci-tag" onclick="useTemplate('bucket_public')">Public Bucket Remediation</div>
+              <div class="ci-tag" onclick="useTemplate('iam_unused')">Unused IAM Roles Purge</div>
+              <div class="ci-tag" onclick="useTemplate('key_rotation')">KMS Key Rotation Verification</div>
+              <div class="ci-tag" onclick="useTemplate('log_sink')">Missing Audit Log Sink Setup</div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="stickies-wrap" id="stickies-board"></div>
+
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>Status:</label>
+          <select id="filter-status" onchange="renderTickets()">
+            <option value="All">All Statuses</option>
+            <option value="Backlog">Backlog</option>
+            <option value="InProgress">In Progress</option>
+            <option value="Review">Review</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Priority:</label>
+          <select id="filter-priority" onchange="renderTickets()">
+            <option value="All">All Priorities</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Workstream:</label>
+          <select id="filter-workstream" onchange="renderTickets()">
+            <option value="All">All Workstreams</option>
+            <option value="IAM">Identity & Access</option>
+            <option value="Storage">Cloud Storage</option>
+            <option value="Network">Networking</option>
+            <option value="Compute">Compute Engine</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ticket-grid" id="ticketGrid">
+        </div>
     </div>
 
-    <!-- PAGE: IDAM -->
-    <div class="page hidden" id="pg-idam"><div id="idam-content"></div></div>
-    <!-- PAGE: SERVICENOW -->
-    <div class="page hidden" id="pg-servicenow"><div id="servicenow-content"></div></div>
-    <!-- PAGE: UAR -->
-    <div class="page hidden" id="pg-uar"><div id="uar-content"></div></div>
-    <!-- PAGE: FEDRAMP -->
-    <div class="page hidden" id="pg-fedramp"><div id="fedramp-content"></div></div>
-    <!-- PAGE: GCP -->
-    <div class="page hidden" id="pg-gcp"><div id="gcp-content"></div></div>
+    <div class="view" id="view-kanban">
+      <div class="view-header">
+        <h1>Operational Kanban</h1>
+        <div class="view-sub">Drag and drop tickets across the remediation lifecycle.</div>
+      </div>
+      
+      <div class="kanban-filter-bar">
+        <div class="kanban-filters">
+          <button class="kanban-filter-btn active" onclick="filterKanban('All')">All</button>
+          <button class="kanban-filter-btn" onclick="filterKanban('IAM')">IAM</button>
+          <button class="kanban-filter-btn" onclick="filterKanban('Storage')">Storage</button>
+          <button class="kanban-filter-btn" onclick="filterKanban('Compliance')">Audit</button>
+        </div>
+      </div>
 
-  </main>
+      <div class="kanban-board">
+        <div class="kanban-col" data-status="Backlog" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-col-header">
+            <span class="kanban-col-title">Backlog</span>
+            <span class="kanban-col-count" id="count-Backlog">0</span>
+          </div>
+          <div class="kanban-cards" id="kanban-Backlog"></div>
+        </div>
+        <div class="kanban-col" data-status="InProgress" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-col-header">
+            <span class="kanban-col-title">In Progress</span>
+            <span class="kanban-col-count" id="count-InProgress">0</span>
+          </div>
+          <div class="kanban-cards" id="kanban-InProgress"></div>
+        </div>
+        <div class="kanban-col" data-status="Review" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-col-header">
+            <span class="kanban-col-title">Verification</span>
+            <span class="kanban-col-count" id="count-Review">0</span>
+          </div>
+          <div class="kanban-cards" id="kanban-Review"></div>
+        </div>
+        <div class="kanban-col" data-status="Blocked" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-col-header">
+            <span class="kanban-col-title">Blocked</span>
+            <span class="kanban-col-count" id="count-Blocked">0</span>
+          </div>
+          <div class="kanban-cards" id="kanban-Blocked"></div>
+        </div>
+        <div class="kanban-col" data-status="Done" ondrop="drop(event)" ondragover="allowDrop(event)">
+          <div class="kanban-col-header">
+            <span class="kanban-col-title">Done</span>
+            <span class="kanban-col-count" id="count-Done">0</span>
+          </div>
+          <div class="kanban-cards" id="kanban-Done"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-compliance">
+      <div class="view-header">
+        <h1>Compliance & UAR</h1>
+        <div class="view-sub">Tracking FedRAMP authorization journey and recurring User Access Reviews.</div>
+      </div>
+
+      <div class="section-header">
+        <h3>FedRAMP Authorization Journey (GCP Overlay)</h3>
+        <span class="badge badge-amber">Target: Moderate</span>
+      </div>
+
+      <div class="fedramp-tracker-card">
+        <div class="auth-journey">
+          <div class="auth-phase">
+            <div class="ap-block complete">
+              <div class="ap-num">01</div>
+              <div class="ap-label">Preparation</div>
+              <div class="ap-sub">Gap Analysis</div>
+            </div>
+          </div>
+          <div class="auth-phase">
+            <div class="ap-block current">
+              <div class="ap-num">02</div>
+              <div class="ap-label">Implementation</div>
+              <div class="ap-sub">Control Setup</div>
+            </div>
+          </div>
+          <div class="auth-phase">
+            <div class="ap-block">
+              <div class="ap-num">03</div>
+              <div class="ap-label">Assessment</div>
+              <div class="ap-sub">3PAO Audit</div>
+            </div>
+          </div>
+          <div class="auth-phase">
+            <div class="ap-block">
+              <div class="ap-num">04</div>
+              <div class="ap-label">Authorization</div>
+              <div class="ap-sub">ATO Issuance</div>
+            </div>
+          </div>
+          <div class="auth-phase">
+            <div class="ap-block">
+              <div class="ap-num">05</div>
+              <div class="ap-label">ConMon</div>
+              <div class="ap-sub">Continuous Tracking</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="uar-campaigns-section">
+        <div class="section-header">
+          <h3>Active UAR Campaigns</h3>
+          <button class="btn-primary btn-sm" onclick="openAddUarModal()">+ Create Campaign</button>
+        </div>
+        <div class="uar-grid" id="uarGrid">
+          </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>FedRAMP ConMon Deliverables</h3>
+        </div>
+        <div class="conmon-items">
+          <div class="conmon-item">
+            <div class="conmon-icon ci-green">M</div>
+            <div class="conmon-text">
+              <strong>Monthly Vulnerability Scan Report</strong>
+              <span>Includes OS, Container, and Database scans.</span>
+            </div>
+            <div class="conmon-due">Due: 3d</div>
+          </div>
+          <div class="conmon-item">
+            <div class="conmon-icon ci-amber">Q</div>
+            <div class="conmon-text">
+              <strong>Quarterly POA&M Review</strong>
+              <span>Submission of updated Plan of Action & Milestones.</span>
+            </div>
+            <div class="conmon-due">Due: 22d</div>
+          </div>
+          <div class="conmon-item">
+            <div class="conmon-icon ci-blue">A</div>
+            <div class="conmon-text">
+              <strong>Annual Assessment (3PAO)</strong>
+              <span>Full control set re-certification.</span>
+            </div>
+            <div class="conmon-due">Aug 2024</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-notes">
+      <div class="view-header">
+        <h1>Operational Scratchpad</h1>
+        <div class="view-sub">Loose notes, technical snippets, and ephemeral task tracking.</div>
+      </div>
+
+      <div class="notes-toolbar">
+        <button class="sticky-color-btn" style="background: #fef08a; color: #854d0e;" onclick="addNote('yellow')">+ Yellow Note</button>
+        <button class="sticky-color-btn" style="background: #bfdbfe; color: #1e3a8a;" onclick="addNote('blue')">+ Blue Note</button>
+        <button class="sticky-color-btn" style="background: #bbf7d0; color: #166534;" onclick="addNote('green')">+ Green Note</button>
+        <button class="sticky-color-btn" style="background: #ddd6fe; color: #5b21b6;" onclick="addNote('purple')">+ Purple Note</button>
+        <div style="flex: 1;"></div>
+        <button class="btn-ghost btn-sm" onclick="addNoteSection()">+ New Section</button>
+      </div>
+
+      <div class="notes-board" id="notesBoard">
+        </div>
+    </div>
+
+  </div>
 </div>
 
-<!-- SLIDE PANEL -->
-<div class="panel-overlay" id="panel-overlay" onclick="closePanelClick(event)"></div>
-<div class="side-panel" id="side-panel">
-  <div class="sp-head">
-    <div class="sp-title" id="sp-title">New Ticket</div>
-    <button class="sp-close" onclick="closePanel()">✕</button>
+<div class="modal-overlay" id="ticketModal" style="display: none;">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <h2 id="modalTitle">New Security Ticket</h2>
+      <button class="modal-close" onclick="closeModal('ticketModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="ticketForm">
+        <input type="hidden" id="ticketId">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Finding Title</label>
+            <input type="text" id="t-title" placeholder="e.g., Unencrypted S3 Bucket in Dev Project" required>
+          </div>
+          <div class="form-group full-width">
+            <label>Description</label>
+            <textarea id="t-desc" rows="3" placeholder="Context of the finding and potential impact..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select id="t-priority">
+              <option value="Critical">Critical</option>
+              <option value="High" selected>High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="t-status">
+              <option value="Backlog">Backlog</option>
+              <option value="InProgress">In Progress</option>
+              <option value="Review">Review</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Workstream</label>
+            <select id="t-workstream">
+              <option value="IAM">IAM</option>
+              <option value="Storage">Storage</option>
+              <option value="Network">Network</option>
+              <option value="Compute">Compute</option>
+              <option value="Compliance">Audit/Comp</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Owner</label>
+            <input type="text" id="t-owner" placeholder="Galatia / Dev Team">
+          </div>
+          
+          <div class="form-group full-width">
+            <div class="common-issues-panel">
+              <div class="ci-panel-title">Remediation Details</div>
+              <div class="form-grid" style="margin-top: 10px;">
+                <div class="form-group">
+                  <label>Phase</label>
+                  <select id="t-phase">
+                    <option value="Discovery">Discovery</option>
+                    <option value="Validation">Validation</option>
+                    <option value="Remediation">Remediation</option>
+                    <option value="Verification">Verification</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Evidence Link / ID</label>
+                  <input type="text" id="t-evidence" placeholder="GCP Project ID or SCC ID">
+                </div>
+                <div class="form-group full-width">
+                  <label>Work Performed</label>
+                  <textarea id="t-work" rows="3" placeholder="Steps taken to resolve..."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('ticketModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveTicket()">Save Finding</button>
+    </div>
   </div>
-  <div class="sp-body" id="sp-body"></div>
-  <div class="sp-foot">
-    <button class="btn btn-danger btn-sm" id="sp-del-btn" style="display:none;margin-right:auto" onclick="deleteCurrentTicket()">Delete</button>
-    <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveTicket()">Save ticket</button>
+</div>
+
+<div class="modal-overlay" id="detailModal" style="display: none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="d-title-top">Ticket Details</h2>
+      <button class="modal-close" onclick="closeModal('detailModal')">&times;</button>
+    </div>
+    <div class="modal-body" id="detailContent">
+      </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="btnDelete" onclick="deleteTicket()">Delete Finding</button>
+      <div style="flex: 1;"></div>
+      <button class="btn-ghost" onclick="closeModal('detailModal')">Close</button>
+      <button class="btn-primary" id="btnEdit" onclick="openEditModal()">Edit Ticket</button>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast">
-  <span id="toast-dot" style="width:7px;height:7px;border-radius:50%;flex-shrink:0"></span>
-  <span id="toast-msg"></span>
+  <div class="toast-icon">✓</div>
+  <div class="toast-msg" id="toastMsg">Operation successful</div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════
-let SB = null;
-let DEMO = true;
-let VIEW = 'dashboard';
-let TICKETS = [];
-let UAR = null;
-let STICKIES = [];
-let ACTIVE_ID = null;  // ticket being edited
-let PANEL_EV = [];     // evidence being edited
-let PANEL_NOTES = [];  // notes being edited
-let CHARTS = {};
+// 2. SUPABASE INITIALIZATION
+const _supabaseUrl = 'https://faiyfikfydlebxscupjt.supabase.co'; // REPLACE THIS
+const _supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhaXlmaWtmeWRsZWJ4c2N1cGp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MTQ0ODYsImV4cCI6MjA5NDA5MDQ4Nn0.dAtU3LTfkJg4XYfVndpe5-X6ZNwg1fcJkouiWD4f4qM'; // REPLACE THIS
+const supabase = window.supabase.createClient(_supabaseUrl, _supabaseAnonKey);
 
-const MODULES = {
-  idam: {
-    label: 'IDAM', color: 'var(--idam-c)', hex: '#6499f5',
-    desc: 'Identity & Access Management — provisioning, deprovisioning, audit',
-    types: ['Access Request','Provisioning','Deprovisioning','MFA/SSO','Privileged Access','AD Sync','Account Audit','Role Review','Other'],
-    statuses: ['backlog','open','in_progress','in_review','blocked','closed'],
-    issues: ['AD account not syncing','MFA enrollment failed — token invalid','SSO token expired','Group membership missing from AD OU','Password policy conflict','Privileged access request pending approval','Stale account >90 days detected','RBAC role misconfiguration','Service account over-privileged','User lifecycle not triggered on HR event']
-  },
-  servicenow: {
-    label: 'ServiceNow / AD', color: 'var(--snow-c)', hex: '#4fc3f7',
-    desc: 'ITSM tickets & Active Directory on-premises management',
-    types: ['Incident','Change Request','Problem','Service Request','LDAP Issue','Group Policy','CI Update','Other'],
-    statuses: ['backlog','open','in_progress','in_review','blocked','closed'],
-    issues: ['LDAP sync delay — on-prem to cloud','DNS resolution failure','LDAP bind error — error 0x8007052E','Password policy conflict (NIST vs. legacy)','Group nesting causing permission inheritance loop','Replication error between DCs','Kerberos ticket validation failure','OU restructure breaking GPO application','SLA breach imminent — < 4h remaining','CI relationship broken in CMDB']
-  },
-  fedramp: {
-    label: 'FedRAMP', color: 'var(--fed-c)', hex: '#b39dfa',
-    desc: 'Authorization & continuous monitoring — POA&M, SSP, ConMon',
-    types: ['POA&M Item','SSP Gap','3PAO Finding','Control Deficiency','ConMon Deliverable','Deviation Request','Vendor Dependency','Inventory Update','Other'],
-    statuses: ['backlog','open','in_progress','in_review','blocked','closed'],
-    issues: ['POA&M item past remediation deadline','Control gap identified — AC-2 account management','Evidence artifact not uploaded to secure repo','3PAO assessment finding raised','Authorization boundary unclear','SSP section incomplete','CIS benchmark deviation detected','Monthly scan not submitted','Vendor dependency unresolved — patch pending','False positive pending AO approval']
-  },
-  gcp: {
-    label: 'GCP', color: 'var(--gcp-c)', hex: '#f6c26a',
-    desc: 'Google Cloud Platform — new project setup, IAM, security',
-    types: ['IAM / Access','Networking / VPC','Security Posture','Cost / Billing','Monitoring / Logging','API / Quota','Service Account','Architecture','Other'],
-    statuses: ['backlog','open','in_progress','in_review','blocked','closed'],
-    issues: ['IAM policy drift — org policy not applied','Budget threshold exceeded','API quota limit hit','Workload unpatched — 30+ days','Logging gap — audit logs not flowing','Service account over-privileged (editor role)','VPC firewall rule conflict','Storage bucket with public access','Missing VPC Service Controls boundary','CSPM alert — resource naming non-compliant']
-  }
+// ===== STATE =====
+let tickets = [];
+let uarCampaigns = [];
+let notesData = [];
+let currentView = 'dashboard';
+let charts = {};
+
+// ===== UTILS =====
+const genId = () => Math.random().toString(36).substr(2, 9);
+const now = () => new Date().toISOString();
+const formatPrettyDate = (iso) => {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const STATUS_COLS = {
-  backlog: { label: 'Backlog', color: 'var(--t3)', hex: '#4a5578' },
-  open: { label: 'Open', color: 'var(--amber)', hex: '#f6c26a' },
-  in_progress: { label: 'In Progress', color: 'var(--blue)', hex: '#6499f5' },
-  in_review: { label: 'In Review', color: 'var(--violet)', hex: '#b39dfa' },
-  blocked: { label: 'Blocked', color: 'var(--coral)', hex: '#f08080' },
-  closed: { label: 'Closed', color: 'var(--green)', hex: '#4cceac' }
-};
-
-const UAR_STAGES = [
-  { id:'scoping',         label:'Scoping',         icon:'📋' },
-  { id:'data_collection', label:'Data Collection',  icon:'📦' },
-  { id:'review',          label:'Review',           icon:'👁' },
-  { id:'exceptions',      label:'Exceptions',       icon:'⚠️' },
-  { id:'remediation',     label:'Remediation',      icon:'🔧' },
-  { id:'signoff',         label:'Sign-Off',         icon:'✅' }
-];
-
-const FED_PHASES = [
-  { id:'prep',     label:'Preparation' },
-  { id:'pkg',      label:'Pkg Development' },
-  { id:'assess',   label:'3PAO Assessment' },
-  { id:'auth',     label:'Authorization' },
-  { id:'conmon',   label:'ConMon' }
-];
-
-// ═══════════════════════════════════════════════════════
-//  DB / SETUP
-// ═══════════════════════════════════════════════════════
-async function connectDB() {
-  const url = document.getElementById('sb-url').value.trim();
-  const key = document.getElementById('sb-key').value.trim();
-  if (!url || !key) return toast('Enter both URL and key', 'warn');
-
+// ===== DATA MGMT (REFACTORED FOR SUPABASE) =====
+async function loadData() {
   try {
-    SB = window.supabase.createClient(url, key);
-    localStorage.setItem('nx_url', url);
-    localStorage.setItem('nx_key', key);
-    DEMO = false;
-    await loadAll();
-    launch();
-  } catch(e) { toast('Connection failed — check credentials', 'danger'); }
-}
+    const { data: ticketsData, error: tErr } = await supabase.from('secops_tickets').select('*');
+    if (tErr) throw tErr;
+    tickets = ticketsData || [];
 
-function launchDemo() {
-  DEMO = true;
-  TICKETS = sampleTickets();
-  UAR = defaultUAR();
-  STICKIES = [];
-  launch();
-}
+    const { data: uarData, error: uErr } = await supabase.from('uar_campaigns').select('*');
+    if (uErr) throw uErr;
+    uarCampaigns = uarData || [];
 
-function launch() {
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  const dot = document.getElementById('db-pulse');
-  const lbl = document.getElementById('db-status-label');
-  if (DEMO) { dot.classList.add('demo'); lbl.textContent = 'Demo mode'; }
-  else       { lbl.textContent = 'Supabase · Connected'; }
-  nav('dashboard');
-}
+    const { data: nData, error: nErr } = await supabase.from('notes_data').select('*');
+    if (nErr) throw nErr;
+    notesData = nData || [];
 
-async function loadAll() {
-  if (DEMO) return;
-  const [{ data: t }, { data: u }, { data: s }] = await Promise.all([
-    SB.from('tickets').select('*, ticket_notes(*), evidence(*)').order('created_at', { ascending: false }),
-    SB.from('uar_process').select('*').limit(1).single(),
-    SB.from('sticky_notes').select('*')
-  ]);
-  TICKETS  = (t || []).map(row => ({
-    ...row,
-    evidence: row.evidence || [],
-    notes:    row.ticket_notes || []
-  }));
-  UAR      = u || defaultUAR();
-  STICKIES = s || [];
-}
-
-// ═══════════════════════════════════════════════════════
-//  NAVIGATION
-// ═══════════════════════════════════════════════════════
-function nav(view) {
-  VIEW = view;
-  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-  document.querySelectorAll('.s-item').forEach(b => b.classList.remove('active'));
-  const pg = document.getElementById('pg-' + view);
-  const ni = document.getElementById('ni-' + view);
-  if (pg) pg.classList.remove('hidden');
-  if (ni) ni.classList.add('active');
-  const titles = {
-    dashboard: 'Dashboard', kanban: 'Kanban Board', stickies: 'Sticky Notes',
-    idam: 'IDAM — Identity & Access Management',
-    servicenow: 'ServiceNow / Active Directory',
-    uar: 'UAR — User Access Review Process',
-    fedramp: 'FedRAMP Authorization & ConMon',
-    gcp: 'GCP — Cloud Project'
-  };
-  document.getElementById('tb-title').textContent = titles[view] || view;
-  updateCounts();
-  if (view === 'dashboard') renderDashboard();
-  else if (view === 'kanban') renderKanban();
-  else if (view === 'stickies') renderStickies();
-  else if (MODULES[view]) renderModule(view);
-}
-
-function updateCounts() {
-  Object.keys(MODULES).forEach(m => {
-    const open = TICKETS.filter(t => t.module === m && t.status !== 'closed').length;
-    const el = document.getElementById('cnt-' + m);
-    if (!el) return;
-    el.textContent = open;
-    el.className = 's-item-count ' + (open === 0 ? 'count-ok' : m === 'fedramp' || (m === 'idam' && open > 0) ? 'count-hot' : m === 'gcp' ? 'count-warn' : 'count-muted');
-  });
-  const uarStage = uarActiveStage();
-  const ue = document.getElementById('cnt-uar');
-  if (ue) ue.textContent = uarStage ? uarStage.label.slice(0,4) : '–';
-}
-
-// ═══════════════════════════════════════════════════════
-//  DASHBOARD
-// ═══════════════════════════════════════════════════════
-function renderDashboard() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const all    = TICKETS;
-  const total  = all.length;
-  const open   = all.filter(t => t.status !== 'closed').length;
-  const closed = all.filter(t => t.status === 'closed').length;
-  const crit   = all.filter(t => t.priority === 'critical' && t.status !== 'closed').length;
-  const overdue = all.filter(t => t.deadline && new Date(t.deadline) < today && t.status !== 'closed').length;
-  const blocked = all.filter(t => t.status === 'blocked').length;
-  const pct = n => total ? Math.round(n/total*100) : 0;
-  const uarDone = uarDoneCount();
-  const uarActive = uarActiveStage();
-
-  let html = '';
-
-  if (crit > 0 || overdue > 0 || blocked > 0) {
-    html += `<div class="alert-bar">⚡ ${[
-      crit > 0 && `${crit} critical`,
-      overdue > 0 && `${overdue} overdue`,
-      blocked > 0 && `${blocked} blocked`
-    ].filter(Boolean).join(' · ')} — requires attention</div>`;
+    // If fresh account, seed it
+    if (tickets.length === 0) {
+      await seedDemoData();
+    }
+  } catch (e) {
+    console.error('Data load failed:', e);
+    showToast('Failed to connect to database', 'red');
   }
-
-  html += `<div class="kpi-grid g5">
-    <div class="kpi c-blue"><div class="kpi-lbl">Open Tickets</div><div class="kpi-val" style="color:var(--blue)">${open}<span style="font-size:14px;opacity:0.4">/${total}</span></div><div class="kpi-sub">across all modules</div><div class="kpi-bar"><div class="kpi-fill" style="width:${pct(open)}%;background:var(--blue)"></div></div></div>
-    <div class="kpi c-coral"><div class="kpi-lbl">Critical</div><div class="kpi-val" style="color:var(--coral)">${crit}</div><div class="kpi-sub">${crit > 0 ? 'immediate action' : 'all clear'}</div><div class="kpi-bar"><div class="kpi-fill" style="width:${pct(crit)}%;background:var(--coral)"></div></div></div>
-    <div class="kpi c-amber"><div class="kpi-lbl">Overdue</div><div class="kpi-val" style="color:var(--amber)">${overdue}</div><div class="kpi-sub">past deadline</div><div class="kpi-bar"><div class="kpi-fill" style="width:${pct(overdue)}%;background:var(--amber)"></div></div></div>
-    <div class="kpi c-green"><div class="kpi-lbl">Resolved</div><div class="kpi-val" style="color:var(--green)">${closed}</div><div class="kpi-sub">${pct(closed)}% close rate</div><div class="kpi-bar"><div class="kpi-fill" style="width:${pct(closed)}%;background:var(--green)"></div></div></div>
-    <div class="kpi c-violet"><div class="kpi-lbl">UAR Progress</div><div class="kpi-val" style="color:var(--violet)">${uarDone}<span style="font-size:14px;opacity:0.4">/6</span></div><div class="kpi-sub">${uarActive ? 'Active: ' + uarActive.label : 'Not started'}</div><div class="kpi-bar"><div class="kpi-fill" style="width:${Math.round(uarDone/6*100)}%;background:var(--violet)"></div></div></div>
-  </div>
-
-  <div class="row-65" style="margin-bottom:14px">
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Recent activity</div><span style="font-size:11px;color:var(--t3)">${all.length} total tickets</span></div>
-      <div class="panel-body-flush" id="dash-activity"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><div class="panel-title">Domain health</div></div>
-      <div class="panel-body-flush" id="dash-health"></div>
-    </div>
-  </div>
-
-  <div class="row3" style="margin-bottom:14px">
-    <div class="panel"><div class="panel-head"><div class="panel-title">Status breakdown</div></div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-status"></canvas></div></div></div>
-    <div class="panel"><div class="panel-head"><div class="panel-title">Priority spread</div></div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-prio"></canvas></div></div></div>
-    <div class="panel"><div class="panel-head"><div class="panel-title">By module</div></div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-module"></canvas></div></div></div>
-  </div>`;
-
-  document.getElementById('dash-content').innerHTML = html;
-
-  // Activity feed
-  const recent = [...all].sort((a,b) => new Date(b.updated_at||b.created_at) - new Date(a.updated_at||a.created_at)).slice(0,9);
-  document.getElementById('dash-activity').innerHTML = recent.length === 0
-    ? `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No tickets yet.</div></div>`
-    : recent.map(t => {
-        const m = MODULES[t.module];
-        return `<div class="act-item">
-          <div class="act-dot" style="background:${m?.hex||'#666'}"></div>
-          <div class="act-text"><strong>${(t.ticket_ref || t.id?.slice(0,8)) || '—'}</strong> · ${t.title||'Untitled'}</div>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${statusPill(t.status)}
-            <span class="act-time">${relTime(t.updated_at||t.created_at)}</span>
-          </div>
-        </div>`;
-      }).join('');
-
-  // Domain health
-  const healthEl = document.getElementById('dash-health');
-  let healthHtml = Object.entries(MODULES).map(([k,m]) => {
-    const mt = all.filter(t => t.module === k);
-    const mo = mt.filter(t => t.status !== 'closed').length;
-    const pct2 = mt.length ? Math.round(mo/mt.length*100) : 0;
-    return `<div class="domain-health-row">
-      <div class="dhrow-label"><div class="dhrow-dot" style="background:${m.hex}"></div>${m.label}</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="dhrow-bar"><div class="dhrow-fill" style="width:${pct2}%;background:${m.hex}"></div></div>
-        <span class="dhrow-count">${mo}/${mt.length}</span>
-        <button class="ibtn" onclick="nav('${k}')">→</button>
-      </div>
-    </div>`;
-  }).join('');
-  // UAR row
-  healthHtml += `<div class="domain-health-row">
-    <div class="dhrow-label"><div class="dhrow-dot" style="background:var(--violet)"></div>UAR</div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="dhrow-bar"><div class="dhrow-fill" style="width:${Math.round(uarDone/6*100)}%;background:var(--violet)"></div></div>
-      <span class="dhrow-count">${uarDone}/6</span>
-      <button class="ibtn" onclick="nav('uar')">→</button>
-    </div>
-  </div>`;
-  healthEl.innerHTML = healthHtml;
-
-  // Charts
-  setTimeout(() => {
-    const statusCounts = Object.keys(STATUS_COLS).map(k => all.filter(t => t.status === k).length);
-    const prioCounts = ['critical','high','medium','low'].map(p => all.filter(t => t.priority === p).length);
-    const modCounts = Object.keys(MODULES).map(k => all.filter(t => t.module === k).length);
-
-    const chartOpts = {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position:'bottom', labels: { color:'#8a96b8', font:{size:10}, padding:8, boxWidth:10 } } }
-    };
-    const barOpts = { ...chartOpts, scales: {
-      x: { ticks:{color:'#4a5578',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'} },
-      y: { ticks:{color:'#4a5578',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'}, beginAtZero:true }
-    }};
-
-    ['chart-status','chart-prio','chart-module'].forEach(id => { if(CHARTS[id]){CHARTS[id].destroy();delete CHARTS[id];} });
-
-    CHARTS['chart-status'] = new Chart(document.getElementById('chart-status'), {
-      type:'doughnut', options: chartOpts,
-      data: { labels: Object.values(STATUS_COLS).map(s=>s.label), datasets:[{ data: statusCounts, backgroundColor: Object.values(STATUS_COLS).map(s=>s.hex+'cc'), borderWidth:0 }] }
-    });
-    CHARTS['chart-prio'] = new Chart(document.getElementById('chart-prio'), {
-      type:'bar', options: barOpts,
-      data: { labels:['Critical','High','Medium','Low'], datasets:[{ data:prioCounts, backgroundColor:['#f08080cc','#f6c26acc','#6499f5cc','#4a5578cc'], borderRadius:4, borderWidth:0 }] }
-    });
-    CHARTS['chart-module'] = new Chart(document.getElementById('chart-module'), {
-      type:'doughnut', options: chartOpts,
-      data: { labels: Object.values(MODULES).map(m=>m.label), datasets:[{ data:modCounts, backgroundColor: Object.values(MODULES).map(m=>m.hex+'cc'), borderWidth:0 }] }
-    });
-  }, 50);
 }
 
-// ═══════════════════════════════════════════════════════
-//  KANBAN
-// ═══════════════════════════════════════════════════════
-function renderKanban() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  // Filter selector
-  let filterMod = document.getElementById('kb-filter-mod')?.value || '';
+async function seedDemoData() {
+  const demoTickets = [
+    { title: 'Project-X: Public Cloud Storage Bucket Found', description: 'LEX-2024-08: Bucket "lexis-nexis-audit-logs-temp" is exposed to allUsers. Immediate remediation required.', priority: 'Critical', status: 'InProgress', workstream: 'Storage', owner: 'Galatia', phase: 'Remediation', createdAt: now(), updatedAt: now() },
+    { title: 'Purge Unused Service Accounts', description: 'Review and delete SAs with no activity in 90 days across 4 production projects.', priority: 'Medium', status: 'Backlog', workstream: 'IAM', owner: 'Identity Team', phase: 'Discovery', createdAt: now(), updatedAt: now() }
+  ];
+  
+  await supabase.from('secops_tickets').insert(demoTickets);
+  await loadData();
+}
 
-  let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-    <div style="font-size:12px;color:var(--t3)">Filter by module:</div>
-    <select style="background:var(--b3);border:1px solid var(--bd2);border-radius:var(--r);color:var(--t1);padding:5px 10px;font-family:var(--font);font-size:12px;outline:none" id="kb-filter-mod" onchange="renderKanban()">
-      <option value="">All modules</option>
-      ${Object.entries(MODULES).map(([k,m]) => `<option value="${k}">${m.label}</option>`).join('')}
-    </select>
-    <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openNewTicket()">+ New Ticket</button>
-  </div>
-  <div class="kanban-wrap">`;
+// ===== VIEWS =====
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + viewId).classList.add('active');
+  
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  document.querySelector(`[data-view="${viewId}"]`).classList.add('active');
+  
+  currentView = viewId;
+  const bc = viewId.toUpperCase() + ' / ' + (viewId === 'dashboard' ? 'OVERVIEW' : 'RESOURCES');
+  document.getElementById('breadcrumb').textContent = bc;
 
-  Object.entries(STATUS_COLS).forEach(([statusKey, statusInfo]) => {
-    let cards = TICKETS.filter(t => t.status === statusKey);
-    if (filterMod) cards = cards.filter(t => t.module === filterMod);
+  if (viewId === 'dashboard') { renderDashboard(); }
+  if (viewId === 'tickets') { renderTickets(); }
+  if (viewId === 'kanban') { renderKanban(); }
+  if (viewId === 'compliance') { renderUarTable(); }
+  if (viewId === 'notes') { renderNotes(); }
 
-    html += `<div class="kanban-col">
-      <div class="kanban-col-bar" style="background:${statusInfo.hex}"></div>
-      <div class="kanban-col-head">
-        <div class="kanban-col-name" style="color:${statusInfo.color}">${statusInfo.label}</div>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">${cards.length}</span>
+  // Close mobile menu
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+// ===== DASHBOARD RENDERING =====
+function renderDashboard() {
+  // Update KPIs
+  document.getElementById('kpi-active').textContent = tickets.filter(t => t.status !== 'Done').length;
+  document.getElementById('kpi-high').textContent = tickets.filter(t => t.priority === 'Critical' || t.priority === 'High').length;
+  document.getElementById('kpi-done').textContent = tickets.filter(t => t.status === 'Done').length;
+
+  // Render Mini List
+  const miniList = document.getElementById('miniTicketList');
+  miniList.innerHTML = '';
+  
+  const escalations = tickets
+    .filter(t => t.priority === 'Critical' || t.priority === 'High')
+    .slice(0, 4);
+
+  escalations.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'ticket-mini';
+    item.onclick = () => showTicketDetail(t.id);
+    
+    const dotColor = t.priority === 'Critical' ? 'var(--red)' : 'var(--amber)';
+    
+    item.innerHTML = `
+      <div class="tm-left">
+        <div class="tm-dot" style="background: ${dotColor}"></div>
+        <div class="tm-info">
+          <div class="tm-title">${t.title}</div>
+          <div class="tm-sub">${t.workstream} • ${t.owner}</div>
+        </div>
       </div>
-      <div class="kanban-cards" id="kb-col-${statusKey}" ondrop="kbDrop(event,'${statusKey}')" ondragover="event.preventDefault()">`;
-
-    cards.forEach(t => {
-      const m = MODULES[t.module];
-      const isOverdue = t.deadline && new Date(t.deadline) < today && t.status !== 'closed';
-      html += `<div class="kanban-card" draggable="true" ondragstart="kbDrag(event,'${t.id}')" onclick="openTicket('${t.id}')">
-        <div class="kanban-card-id">${t.ticket_ref || t.id?.slice(0,8) || '—'}</div>
-        <div class="kanban-card-top">
-          <div class="kanban-card-title">${esc(t.title||'Untitled')}</div>
-          <span class="pdot pdot-${t.priority||'low'}"></span>
-        </div>
-        ${t.description ? `<div class="kanban-card-desc">${esc(t.description).slice(0,70)}${t.description.length>70?'…':''}</div>` : ''}
-        <div class="kanban-card-foot">
-          <span class="pill pill-${modPill(t.module)}" style="font-size:9px">${m?.label||t.module}</span>
-          ${isOverdue ? `<span style="font-family:var(--mono);font-size:10px;color:var(--coral)">⚠ ${t.deadline}</span>` : t.deadline ? `<span class="kanban-card-due" style="color:var(--t3)">${t.deadline}</span>` : ''}
-          ${(t.evidence||[]).length ? `<span style="font-size:10px;color:var(--green)">📎${(t.evidence).length}</span>` : ''}
-        </div>
-      </div>`;
-    });
-
-    html += `</div>
-      <button class="kanban-add-card" onclick="openNewTicketStatus('${statusKey}')">+ Add card</button>
-    </div>`;
+      <div class="tm-badge status-badge status-${t.status.replace(' ', '')}">${t.status}</div>
+    `;
+    miniList.appendChild(item);
   });
 
-  html += '</div>';
-  document.getElementById('kanban-content').innerHTML = html;
+  initCharts();
 }
 
-let dragId = null;
-function kbDrag(e, id) { dragId = id; e.dataTransfer.effectAllowed = 'move'; }
-async function kbDrop(e, newStatus) {
-  e.preventDefault();
-  if (!dragId) return;
-  const t = TICKETS.find(x => x.id === dragId);
-  if (!t || t.status === newStatus) return;
-  t.status = newStatus;
-  t.updated_at = new Date().toISOString();
-  await persistTicket(t);
-  dragId = null;
+function initCharts() {
+  // Simple check to prevent canvas collision
+  if (charts.dist) charts.dist.destroy();
+  if (charts.vel) charts.vel.destroy();
+  if (charts.stat) charts.stat.destroy();
+
+  const ctx1 = document.getElementById('distributionChart').getContext('2d');
+  charts.dist = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['IAM', 'Storage', 'Network', 'Compute'],
+      datasets: [{
+        data: [
+          tickets.filter(t => t.workstream === 'IAM').length,
+          tickets.filter(t => t.workstream === 'Storage').length,
+          tickets.filter(t => t.workstream === 'Network').length,
+          tickets.filter(t => t.workstream === 'Compute').length
+        ],
+        backgroundColor: ['#22d3ee', '#34d399', '#fbbf24', '#a78bfa'],
+        borderWidth: 0,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom', labels: { color: '#6b7280', font: { size: 10 } } } },
+      cutout: '70%'
+    }
+  });
+
+  const ctx2 = document.getElementById('velocityChart').getContext('2d');
+  charts.vel = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Resolved Findings',
+        data: [2, 5, 3, 8, 4, 2, 6],
+        borderColor: '#22d3ee',
+        tension: 0.4,
+        fill: true,
+        backgroundColor: 'rgba(34,211,238,0.05)'
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: '#1e2229' }, ticks: { color: '#6b7280' } },
+        x: { grid: { display: false }, ticks: { color: '#6b7280' } }
+      }
+    }
+  });
+
+  const ctx3 = document.getElementById('statusChart').getContext('2d');
+  charts.stat = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: ['Backlog', 'In Progress', 'Done'],
+      datasets: [{
+        data: [
+          tickets.filter(t => t.status === 'Backlog').length,
+          tickets.filter(t => t.status === 'InProgress').length,
+          tickets.filter(t => t.status === 'Done').length
+        ],
+        backgroundColor: ['#374151', '#22d3ee', '#34d399']
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { display: false },
+        x: { grid: { display: false }, ticks: { color: '#6b7280' } }
+      }
+    }
+  });
+}
+
+// ===== TICKET RENDERING =====
+function renderTickets() {
+  const grid = document.getElementById('ticketGrid');
+  grid.innerHTML = '';
+  
+  const fStatus = document.getElementById('filter-status').value;
+  const fPri = document.getElementById('filter-priority').value;
+  const fWork = document.getElementById('filter-workstream').value;
+
+  const filtered = tickets.filter(t => {
+    return (fStatus === 'All' || t.status === fStatus) &&
+           (fPri === 'All' || t.priority === fPri) &&
+           (fWork === 'All' || t.workstream === fWork);
+  });
+
+  filtered.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'ticket-card';
+    card.dataset.priority = t.priority;
+    card.onclick = () => showTicketDetail(t.id);
+    
+    card.innerHTML = `
+      <div class="tc-top">
+        <div class="tc-title">${t.title}</div>
+        <div class="tc-badges">
+          <span class="priority-badge priority-${t.priority}">${t.priority}</span>
+          <span class="status-badge status-${t.status.replace(' ', '')}">${t.status}</span>
+        </div>
+      </div>
+      <div class="tc-meta">
+        <span class="tc-id">ID: ${t.id.toUpperCase()}</span>
+        <span class="tc-workstream">${t.workstream}</span>
+      </div>
+      <div class="tc-desc">${t.description}</div>
+      <div class="tc-footer">
+        <div class="tc-date">Updated: ${formatPrettyDate(t.updatedAt)}</div>
+        <div style="font-size: 10px; color: var(--text-dim)">Owner: ${t.owner}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ===== KANBAN RENDERING =====
+let currentKanbanFilter = 'All';
+function filterKanban(workstream) {
+  currentKanbanFilter = workstream;
+  document.querySelectorAll('.kanban-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === workstream || (btn.textContent === 'All' && workstream === 'All'));
+  });
   renderKanban();
 }
 
-// ═══════════════════════════════════════════════════════
-//  MODULE PAGES
-// ═══════════════════════════════════════════════════════
-function renderModule(mod) {
-  const m = MODULES[mod];
-  const today = new Date(); today.setHours(0,0,0,0);
-  const tickets = TICKETS.filter(t => t.module === mod);
-  const open = tickets.filter(t => t.status !== 'closed').length;
-  const closed = tickets.filter(t => t.status === 'closed').length;
-  const crit = tickets.filter(t => t.priority === 'critical' && t.status !== 'closed').length;
-  const overdue = tickets.filter(t => t.deadline && new Date(t.deadline) < today && t.status !== 'closed').length;
+function renderKanban() {
+  const statuses = ['Backlog', 'InProgress', 'Review', 'Blocked', 'Done'];
+  
+  statuses.forEach(status => {
+    const col = document.getElementById(`kanban-${status}`);
+    col.innerHTML = '';
+    
+    const filtered = tickets.filter(t => {
+      const matchStatus = t.status === status;
+      const matchWork = currentKanbanFilter === 'All' || t.workstream === currentKanbanFilter;
+      return matchStatus && matchWork;
+    });
 
-  let html = `<div class="kpi-grid g4" style="margin-bottom:16px">
-    <div class="kpi"><div class="kpi-lbl">Total</div><div class="kpi-val" style="color:${m.color}">${tickets.length}</div><div class="kpi-sub">all time</div></div>
-    <div class="kpi c-amber"><div class="kpi-lbl">Open</div><div class="kpi-val" style="color:var(--amber)">${open}</div><div class="kpi-sub">active</div></div>
-    <div class="kpi c-green"><div class="kpi-lbl">Closed</div><div class="kpi-val" style="color:var(--green)">${closed}</div><div class="kpi-sub">${tickets.length ? Math.round(closed/tickets.length*100) : 0}% rate</div></div>
-    <div class="kpi c-coral"><div class="kpi-lbl">Overdue</div><div class="kpi-val" style="color:var(--coral)">${overdue}</div><div class="kpi-sub">${crit ? crit + ' critical' : 'no critical'}</div></div>
-  </div>`;
+    document.getElementById(`count-${status}`).textContent = filtered.length;
 
-  // Module-specific extras
-  if (mod === 'fedramp') html += renderFedPipeline();
-  if (mod === 'idam' || mod === 'servicenow') html += renderDomainNotes(mod);
+    filtered.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'kanban-card';
+      card.dataset.priority = t.priority;
+      card.draggable = true;
+      card.id = `drag-${t.id}`;
+      card.ondragstart = (e) => drag(e, t.id);
+      card.onclick = () => showTicketDetail(t.id);
 
-  // Filter bar + table
-  html += `<div class="panel">
-    <div class="panel-head">
-      <div class="panel-title" style="color:${m.color}">${m.label} Tickets</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input class="fi" style="width:180px;padding:5px 10px;font-size:12px" placeholder="Search…" oninput="renderFilteredTable('${mod}', this.value)" id="srch-${mod}"/>
-        <select class="fi" style="padding:5px 10px;font-size:12px" onchange="renderFilteredTable('${mod}')" id="fstat-${mod}">
-          <option value="">All statuses</option>${Object.entries(STATUS_COLS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}
-        </select>
-        <select class="fi" style="padding:5px 10px;font-size:12px" onchange="renderFilteredTable('${mod}')" id="fprio-${mod}">
-          <option value="">All priorities</option>${['critical','high','medium','low'].map(p=>`<option value="${p}">${p}</option>`).join('')}
-        </select>
-        <button class="btn btn-primary btn-sm" onclick="openNewTicket('${mod}')">+ Ticket</button>
-      </div>
-    </div>
-    <div id="tbl-${mod}">`;
-
-  html += renderTicketTable(tickets, mod) + '</div></div>';
-  document.getElementById(mod + '-content').innerHTML = html;
-}
-
-function renderFedPipeline() {
-  const phases = ['prep','pkg','assess','auth','conmon'];
-  const savedPhase = parseInt(localStorage.getItem('nx_fed_phase') || '1');
-  return `<div class="panel" style="margin-bottom:14px">
-    <div class="panel-head"><div class="panel-title">Authorization Pipeline</div><span style="font-size:11px;color:var(--t3)">FedRAMP lifecycle stages — click to advance</span></div>
-    <div class="panel-body">
-      <div class="fed-pipeline">
-        ${FED_PHASES.map((p,i) => {
-          const s = i < savedPhase ? 'done' : i === savedPhase ? 'active' : 'pending';
-          return `<div class="fed-step ${s}" onclick="advanceFedPhase(${i})" title="${p.label}">${p.label}</div>`;
-        }).join('')}
-      </div>
-      <div style="font-size:10px;color:var(--t3);margin-top:8px">Stages: Preparation → Package Development → 3PAO Assessment → Authorization (ATO) → Continuous Monitoring (ConMon)</div>
-    </div>
-  </div>`;
-}
-
-function advanceFedPhase(i) {
-  localStorage.setItem('nx_fed_phase', String(i));
-  renderModule('fedramp');
-}
-
-function renderDomainNotes(mod) {
-  const notes = localStorage.getItem('nx_notes_' + mod) || '';
-  return `<div class="panel" style="margin-bottom:14px">
-    <div class="panel-head">
-      <div class="panel-title">${mod === 'idam' ? 'Work Performed Log' : 'Domain Notes'}</div>
-      <button class="ibtn" onclick="editDomainNotes('${mod}')">Edit notes</button>
-    </div>
-    <div class="panel-body">
-      <div style="background:var(--b3);border:1px solid var(--bd);border-radius:var(--r);padding:10px 14px;font-size:12px;color:${notes?'var(--t2)':'var(--t3)'};white-space:pre-wrap;min-height:48px;cursor:pointer;line-height:1.6" onclick="editDomainNotes('${mod}')">${esc(notes) || 'Click to add notes, work performed, decisions…'}</div>
-    </div>
-  </div>`;
-}
-
-function editDomainNotes(mod) {
-  const current = localStorage.getItem('nx_notes_' + mod) || '';
-  document.getElementById('sp-title').textContent = 'Domain Notes — ' + MODULES[mod].label;
-  document.getElementById('sp-del-btn').style.display = 'none';
-  document.getElementById('sp-body').innerHTML = `
-    <div class="form-section">
-      <div class="form-section-hd">Notes, decisions &amp; work performed</div>
-      <textarea class="fi ta" id="domain-notes-inp" style="min-height:300px">${esc(current)}</textarea>
-    </div>`;
-  document.getElementById('sp-foot').innerHTML = `
-    <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveDomainNotes('${mod}')">Save notes</button>`;
-  openPanel();
-}
-
-function saveDomainNotes(mod) {
-  localStorage.setItem('nx_notes_' + mod, document.getElementById('domain-notes-inp')?.value || '');
-  closePanel(); toast('Notes saved'); renderModule(mod);
-}
-
-function renderTicketTable(list, mod) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  if (!list.length) return `<div class="empty"><div class="empty-icon">🎫</div><div class="empty-text">No tickets yet. Create one above.</div></div>`;
-
-  let html = `<table class="tbl"><thead><tr>
-    <th>Ticket</th><th>Type</th><th>Priority</th><th>Status</th><th>Deadline</th>
-    ${mod === 'fedramp' ? '<th>Control</th>' : ''}
-    <th>Evidence</th><th>Notes</th><th></th>
-  </tr></thead><tbody>`;
-
-  list.forEach(t => {
-    const isOverdue = t.deadline && new Date(t.deadline) < today && t.status !== 'closed';
-    html += `<tr class="${isOverdue?'overdue':''}" onclick="openTicket('${t.id}')">
-      <td>
-        <div class="t-id">${esc(t.ticket_ref || t.id?.slice(0,8) || '—')}</div>
-        <div class="t-title">${esc(t.title||'Untitled')}</div>
-        ${t.description ? `<div class="t-desc">${esc(t.description).slice(0,55)}${t.description.length>55?'…':''}</div>` : ''}
-      </td>
-      <td><span style="font-size:11px;color:var(--t2)">${esc(t.ticket_type||'—')}</span></td>
-      <td>${prioPill(t.priority)}</td>
-      <td>${statusPill(t.status)}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:${isOverdue?'var(--coral)':'var(--t3)'}">${t.deadline||'—'}${isOverdue?' ⚠':''}${t.start_date?`<div style="color:var(--t4);font-size:10px">from ${t.start_date}</div>`:''}</td>
-      ${mod === 'fedramp' ? `<td><span style="font-family:var(--mono);font-size:10px;color:var(--violet)">${esc(t.control_id||'—')}</span>${t.poam_id?`<div style="font-size:10px;color:var(--t3)">${t.poam_id}</div>`:''}</td>` : ''}
-      <td>${(t.evidence||[]).length ? `<span class="pill pill-green" style="font-size:9px">📎 ${(t.evidence||[]).length}</span>` : `<span style="color:var(--t4);font-size:11px">—</span>`}</td>
-      <td>${(t.notes||[]).length ? `<span class="pill pill-blue" style="font-size:9px">${(t.notes||[]).length}</span>` : `<span style="color:var(--t4);font-size:11px">—</span>`}</td>
-      <td onclick="event.stopPropagation()">
-        <div style="display:flex;gap:4px">
-          <button class="ibtn" onclick="openTicket('${t.id}')">View</button>
-          <button class="ibtn danger" onclick="deleteTicketById('${t.id}')">✕</button>
+      card.innerHTML = `
+        <div class="kc-title">${t.title}</div>
+        <div class="kc-meta">
+          <span class="kc-workstream">${t.workstream}</span>
+          <span class="priority-badge priority-${t.priority}" style="font-size: 7px; padding: 1px 4px;">${t.priority}</span>
         </div>
-      </td>
-    </tr>`;
+      `;
+      col.appendChild(card);
+    });
   });
-  return html + '</tbody></table>';
 }
 
-function renderFilteredTable(mod) {
-  const srch = document.getElementById('srch-' + mod)?.value.toLowerCase() || '';
-  const fst  = document.getElementById('fstat-' + mod)?.value || '';
-  const fp   = document.getElementById('fprio-' + mod)?.value || '';
-  let list = TICKETS.filter(t => t.module === mod);
-  if (srch) list = list.filter(t => (t.title||'').toLowerCase().includes(srch) || (t.description||'').toLowerCase().includes(srch) || (t.ticket_ref||'').toLowerCase().includes(srch));
-  if (fst) list = list.filter(t => t.status === fst);
-  if (fp) list = list.filter(t => t.priority === fp);
-  document.getElementById('tbl-' + mod).innerHTML = renderTicketTable(list, mod);
+// ===== DRAG AND DROP =====
+function allowDrop(ev) { ev.preventDefault(); }
+function drag(ev, id) { 
+  ev.dataTransfer.setData("ticketId", id);
+  ev.target.classList.add('dragging');
 }
 
-// ═══════════════════════════════════════════════════════
-//  UAR PAGE
-// ═══════════════════════════════════════════════════════
-function renderUAR() {
-  const u = UAR || defaultUAR();
-  const done = UAR_STAGES.filter(s => u[s.id + '_status'] === 'done').length;
-  const active = UAR_STAGES.find(s => u[s.id + '_status'] === 'active');
-  const pct = Math.round(done/6*100);
-
-  let html = `<div class="kpi-grid g3" style="margin-bottom:16px">
-    <div class="kpi c-violet"><div class="kpi-lbl">Stages Complete</div><div class="kpi-val" style="color:var(--violet)">${done}<span style="font-size:14px;opacity:0.4">/6</span></div><div class="kpi-sub">${pct}% of cycle done</div><div class="kpi-bar"><div class="kpi-fill" style="width:${pct}%;background:var(--violet)"></div></div></div>
-    <div class="kpi"><div class="kpi-lbl">Active Stage</div><div class="kpi-val" style="font-size:18px;color:var(--blue)">${active ? active.label : '—'}</div><div class="kpi-sub">${active ? 'In progress' : 'No active stage'}</div></div>
-    <div class="kpi c-amber"><div class="kpi-lbl">Cycle</div><div class="kpi-val" style="font-size:18px;color:var(--t1)">${esc(u.cycle_name||'UAR Cycle')}</div><div class="kpi-sub">${esc(u.quarter||'Quarter not set')}</div></div>
-  </div>
-
-  <div class="panel" style="margin-bottom:14px">
-    <div class="panel-head">
-      <div class="panel-title">Stage Pipeline</div>
-      <div style="display:flex;gap:8px">
-        ${pill(pct + '% complete', 'violet')}
-        <button class="ibtn" onclick="editUARCycle()">Edit cycle info</button>
-      </div>
-    </div>
-    <div class="panel-body">
-      <div class="uar-pipeline">`;
-
-  UAR_STAGES.forEach(s => {
-    const st = u[s.id + '_status'] || 'pending';
-    const dt = u[s.id + '_date'] || '';
-    html += `<div class="uar-stage ${st}" onclick="openUARStage('${s.id}')">
-      <div class="uar-stage-icon">${s.icon}</div>
-      <div class="uar-stage-label">${s.label}</div>
-      <div class="uar-stage-date">${dt || '—'}</div>
-    </div>`;
-  });
-
-  html += `</div>
-      <div style="font-size:10px;color:var(--t3);margin-top:10px">Click any stage to update status, dates, and notes. Stages flow: Scoping → Data Collection → Review → Exceptions → Remediation → Sign-Off</div>
-    </div>
-  </div>
-
-  <div class="row2">`;
-
-  // Stage notes cards for completed/active stages
-  UAR_STAGES.filter(s => u[s.id+'_notes']).forEach(s => {
-    const st = u[s.id+'_status'] || 'pending';
-    html += `<div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">${s.icon} ${s.label}</div>
-        ${pill(st, st === 'done' ? 'green' : st === 'active' ? 'blue' : 'gray')}
-      </div>
-      <div class="panel-body">
-        <div style="font-size:12px;color:var(--t2);line-height:1.6;white-space:pre-wrap">${esc(u[s.id+'_notes']||'')}</div>
-      </div>
-    </div>`;
-  });
-
-  html += '</div>';
-  document.getElementById('uar-content').innerHTML = html;
-}
-
-function openUARStage(stageId) {
-  const u = UAR || defaultUAR();
-  const s = UAR_STAGES.find(x => x.id === stageId);
-  const st = u[stageId+'_status'] || 'pending';
-  const dt = u[stageId+'_date'] || '';
-  const notes = u[stageId+'_notes'] || '';
-
-  document.getElementById('sp-title').textContent = s.icon + ' ' + s.label + ' — UAR Stage';
-  document.getElementById('sp-del-btn').style.display = 'none';
-  document.getElementById('sp-body').innerHTML = `
-    <div class="form-section">
-      <div class="form-section-hd">Stage Details</div>
-      <div class="fg2">
-        <div>
-          <label class="fl">Status</label>
-          <select class="fi" id="uar-st">
-            ${['pending','active','done'].map(s2 => `<option value="${s2}"${s2===st?' selected':''}>${s2.charAt(0).toUpperCase()+s2.slice(1)}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="fl">Completion date</label>
-          <input class="fi" type="date" id="uar-dt" value="${dt}"/>
-        </div>
-      </div>
-    </div>
-    <div class="form-section">
-      <div class="form-section-hd">Stage Notes &amp; Findings</div>
-      <textarea class="fi ta" id="uar-notes" style="min-height:160px">${esc(notes)}</textarea>
-    </div>`;
-  document.getElementById('sp-foot').innerHTML = `
-    <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveUARStage('${stageId}')">Save stage</button>`;
-  openPanel();
-}
-
-async function saveUARStage(stageId) {
-  if (!UAR) UAR = defaultUAR();
-  UAR[stageId+'_status'] = document.getElementById('uar-st')?.value;
-  UAR[stageId+'_date']   = document.getElementById('uar-dt')?.value;
-  UAR[stageId+'_notes']  = document.getElementById('uar-notes')?.value;
-  if (!DEMO && SB) {
-    if (UAR.id) await SB.from('uar_process').update(UAR).eq('id', UAR.id);
-    else {
-      const { data } = await SB.from('uar_process').insert([UAR]).select();
-      if (data?.[0]) UAR = { ...UAR, id: data[0].id };
-    }
+async function drop(ev) {
+  ev.preventDefault();
+  const id = ev.dataTransfer.getData("ticketId");
+  const newStatus = ev.currentTarget.dataset.status;
+  
+  const ticket = tickets.find(t => t.id === id || t.id.toString() === id.toString());
+  if (ticket && ticket.status !== newStatus) {
+    ticket.status = newStatus;
+    ticket.updatedAt = now();
+    
+    await supabase.from('secops_tickets').update({ status: newStatus, updatedAt: now() }).eq('id', id);
+    showToast(`Moved to ${newStatus}`);
+    renderKanban();
   }
-  closePanel(); toast('Stage updated'); renderUAR(); updateCounts();
+  document.getElementById(`drag-${id}`).classList.remove('dragging');
 }
 
-function editUARCycle() {
-  const u = UAR || defaultUAR();
-  document.getElementById('sp-title').textContent = 'UAR Cycle Information';
-  document.getElementById('sp-del-btn').style.display = 'none';
-  document.getElementById('sp-body').innerHTML = `
-    <div class="fg2">
-      <div class="ff"><label class="fl">Cycle name</label><input class="fi" id="uar-cn" value="${esc(u.cycle_name||'')}"/></div>
-      <div><label class="fl">Quarter</label><input class="fi" id="uar-q" value="${esc(u.quarter||'')}" placeholder="e.g. Q2-2025"/></div>
-      <div><label class="fl">Scope</label><input class="fi" id="uar-sc" value="${esc(u.scope||'')}" placeholder="Systems and user populations in scope"/></div>
-    </div>`;
-  document.getElementById('sp-foot').innerHTML = `
-    <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveUARCycle()">Save</button>`;
-  openPanel();
+// ===== MODALS & ACTIONS =====
+function openAddTicketModal() {
+  document.getElementById('ticketForm').reset();
+  document.getElementById('ticketId').value = '';
+  document.getElementById('modalTitle').textContent = 'New Security Ticket';
+  document.getElementById('ticketModal').style.display = 'flex';
 }
 
-async function saveUARCycle() {
-  if (!UAR) UAR = defaultUAR();
-  UAR.cycle_name = document.getElementById('uar-cn')?.value || '';
-  UAR.quarter    = document.getElementById('uar-q')?.value || '';
-  UAR.scope      = document.getElementById('uar-sc')?.value || '';
-  closePanel(); toast('Cycle info saved'); renderUAR();
-}
-
-// ═══════════════════════════════════════════════════════
-//  TICKET PANEL
-// ═══════════════════════════════════════════════════════
-function openNewTicket(defaultMod) {
-  ACTIVE_ID = null;
-  PANEL_EV = [];
-  PANEL_NOTES = [];
-  document.getElementById('sp-title').textContent = 'New Ticket';
-  document.getElementById('sp-del-btn').style.display = 'none';
-  document.getElementById('sp-body').innerHTML = buildTicketForm(null, defaultMod || Object.keys(MODULES)[0]);
-  document.getElementById('sp-foot').innerHTML = `
-    <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveTicket()">Create ticket</button>`;
-  openPanel();
-}
-
-function openNewTicketStatus(status) {
-  openNewTicket();
-  setTimeout(() => { const el = document.getElementById('f-status'); if(el) el.value = status; }, 50);
-}
-
-function openTicket(id) {
-  const t = TICKETS.find(x => x.id === id);
-  if (!t) return;
-  ACTIVE_ID = id;
-  PANEL_EV = [...(t.evidence||[])];
-  PANEL_NOTES = [...(t.notes||[])];
-  document.getElementById('sp-title').textContent = (t.ticket_ref || 'Ticket') + ' — ' + (t.title||'').slice(0,40);
-  document.getElementById('sp-del-btn').style.display = 'inline-flex';
-  document.getElementById('sp-body').innerHTML = buildTicketForm(t, t.module);
-  document.getElementById('sp-foot').innerHTML = `
-    <button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="deleteCurrentTicket()">Delete</button>
-    <button class="btn btn-ghost" onclick="closePanel()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveTicket()">Save changes</button>`;
-  openPanel();
-}
-
-function buildTicketForm(t, defaultMod) {
-  const mod = t?.module || defaultMod;
-  const m = MODULES[mod];
-  const isUAR = false; // UAR has its own flow
-  const isFed = mod === 'fedramp';
-
-  return `
-  <div class="sp-tabs">
-    <div class="sp-tab active" onclick="spTab('details')">Details</div>
-    <div class="sp-tab" onclick="spTab('evidence')">Evidence ${PANEL_EV.length ? `(${PANEL_EV.length})` : ''}</div>
-    <div class="sp-tab" onclick="spTab('notes')">Notes ${PANEL_NOTES.length ? `(${PANEL_NOTES.length})` : ''}</div>
-    <div class="sp-tab" onclick="spTab('history')">History</div>
-  </div>
-
-  <div id="sp-tab-details">
-    <div class="form-section">
-      <div class="form-section-hd">Module &amp; Identification</div>
-      <div class="fg2">
-        <div>
-          <label class="fl">Module</label>
-          <select class="fi" id="f-module" onchange="switchModuleForm(this.value)">
-            ${Object.entries(MODULES).map(([k,mv]) => `<option value="${k}"${k===mod?' selected':''}>${mv.label}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="fl">Ticket reference</label>
-          <input class="fi mono-inp" id="f-ref" value="${esc(t?.ticket_ref||'')}" placeholder="e.g. INC-0042, FED-007"/>
-        </div>
-        <div class="ff">
-          <label class="fl">Title / summary</label>
-          <input class="fi" id="f-title" value="${esc(t?.title||'')}" placeholder="Short description of the issue or task"/>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <div class="form-section-hd">Ticket Details</div>
-      <div class="fg1">
-        <label class="fl">Description</label>
-        <textarea class="fi ta" id="f-desc" style="min-height:90px" placeholder="Full details, context, steps, findings…">${esc(t?.description||'')}</textarea>
-      </div>
-      <div class="fg2">
-        <div>
-          <label class="fl">Type</label>
-          <select class="fi" id="f-type">
-            ${(m?.types||['General','Other']).map(tp => `<option${t?.ticket_type===tp?' selected':''}>${tp}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="fl">Priority</label>
-          <select class="fi" id="f-priority">
-            ${['critical','high','medium','low'].map(p => `<option value="${p}"${t?.priority===p?' selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="fl">Status</label>
-          <select class="fi" id="f-status">
-            ${Object.entries(STATUS_COLS).map(([k,v]) => `<option value="${k}"${t?.status===k?' selected':''}>${v.label}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="fl">Assignee</label>
-          <input class="fi" id="f-assignee" value="${esc(t?.assignee||'')}" placeholder="Name or team"/>
-        </div>
-        <div>
-          <label class="fl">Start date</label>
-          <input class="fi" type="date" id="f-start" value="${t?.start_date||''}"/>
-        </div>
-        <div>
-          <label class="fl">Deadline</label>
-          <input class="fi" type="date" id="f-deadline" value="${t?.deadline||''}"/>
-        </div>
-      </div>
-      ${isFed ? `<div class="fg2">
-        <div><label class="fl">Control ID (NIST)</label><input class="fi mono-inp" id="f-control" value="${esc(t?.control_id||'')}" placeholder="e.g. AC-2, IA-5"/></div>
-        <div><label class="fl">POA&M ID</label><input class="fi mono-inp" id="f-poam" value="${esc(t?.poam_id||'')}" placeholder="POA&M item ref"/></div>
-        <div>
-          <label class="fl">Risk level</label>
-          <select class="fi" id="f-risk">
-            ${['High','Moderate','Low'].map(r=>`<option${t?.risk_level===r?' selected':''}>${r}</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label class="fl">Deviation type</label>
-          <select class="fi" id="f-dev">
-            <option value="">None</option>
-            ${['Risk Adjustment','False Positive','Operational Requirement','Vendor Dependency'].map(d=>`<option${t?.deviation_type===d?' selected':''}>${d}</option>`).join('')}
-          </select>
-        </div>
-      </div>` : ''}
-      <div class="fg1">
-        <label class="fl">Work performed / summary</label>
-        <textarea class="fi ta" id="f-work" style="min-height:60px" placeholder="Steps taken, actions completed…">${esc(t?.work_performed||'')}</textarea>
-      </div>
-    </div>
-
-    <div class="form-section">
-      <div class="form-section-hd">⚡ Common issues — click to append to description</div>
-      <div class="chips" id="f-chips">
-        ${(m?.issues||[]).map(i => `<div class="chip" onclick="appendIssue('${esc(i)}')">${esc(i)}</div>`).join('')}
-      </div>
-    </div>
-  </div>
-
-  <div id="sp-tab-evidence" style="display:none">
-    <div class="form-section">
-      <div class="form-section-hd">Evidence files &amp; artifacts</div>
-      <div class="ev-drop" onclick="document.getElementById('ev-file-inp').click()">
-        <div class="ev-drop-icon">📎</div>
-        <div class="ev-drop-text">Click to reference files (names, links, doc references)</div>
-        <div style="font-size:10px;color:var(--t4);margin-top:3px">Screenshots · Audit reports · SSP artifacts · Scan results · Email chains</div>
-      </div>
-      <input type="file" id="ev-file-inp" multiple style="display:none" onchange="addEvFiles(this.files)"/>
-      <div class="ev-list" id="ev-list">${renderEvList()}</div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <input class="fi" id="ev-manual" placeholder="Or type reference: link, doc name, path…" style="flex:1"/>
-        <button class="btn btn-ghost btn-sm" onclick="addManualEv()">Add</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="sp-tab-notes" style="display:none">
-    <div class="form-section">
-      <div class="form-section-hd">Notes &amp; log entries</div>
-      <div class="note-input-row">
-        <textarea class="fi ta" id="note-inp" placeholder="Add a note, update, or finding…" style="min-height:70px;flex:1"></textarea>
-        <button class="note-add-btn" onclick="addNote()">Add note</button>
-      </div>
-      <div class="notes-list" id="notes-list">${renderNotesList()}</div>
-    </div>
-  </div>
-
-  <div id="sp-tab-history" style="display:none">
-    <div class="form-section">
-      <div class="form-section-hd">Ticket history</div>
-      ${t ? `<div class="tl">
-        <div class="tl-item">
-          <div class="tl-dot" style="background:var(--blue)"></div>
-          <div class="tl-body"><div class="tl-event">Ticket created</div><div class="tl-time">${relTime(t.created_at)}</div></div>
-        </div>
-        ${(t.notes||[]).map(n => `<div class="tl-item">
-          <div class="tl-dot" style="background:var(--amber)"></div>
-          <div class="tl-body">
-            <div class="tl-event">Note added</div>
-            <div class="tl-time">${relTime(typeof n==='object'?n.created_at:null)}</div>
-            ${(typeof n==='object'?n.body:n) ? `<div class="tl-note">${esc(typeof n==='object'?n.body:n)}</div>` : ''}
-          </div>
-        </div>`).join('')}
-        ${(t.evidence||[]).map(ev => `<div class="tl-item">
-          <div class="tl-dot" style="background:var(--green)"></div>
-          <div class="tl-body"><div class="tl-event">Evidence: ${esc(ev.name||ev)}</div><div class="tl-time">${ev.added_at ? relTime(ev.added_at) : 'Added'}</div></div>
-        </div>`).join('')}
-      </div>` : `<div class="empty" style="padding:24px"><div class="empty-text">History appears after saving.</div></div>`}
-    </div>
-  </div>`;
-}
-
-function switchModuleForm(mod) {
-  const m = MODULES[mod];
-  if (!m) return;
-  // Update type options
-  const typeEl = document.getElementById('f-type');
-  if (typeEl) typeEl.innerHTML = (m.types||['General']).map(tp => `<option>${tp}</option>`).join('');
-  // Update chips
-  const chipsEl = document.getElementById('f-chips');
-  if (chipsEl) chipsEl.innerHTML = (m.issues||[]).map(i => `<div class="chip" onclick="appendIssue('${esc(i)}')">${esc(i)}</div>`).join('');
-}
-
-function appendIssue(txt) {
-  const el = document.getElementById('f-desc');
-  if (el) el.value = el.value ? el.value + '\n• ' + txt : '• ' + txt;
-}
-
-function spTab(name) {
-  ['details','evidence','notes','history'].forEach(t => {
-    const el = document.getElementById('sp-tab-' + t);
-    if (el) el.style.display = t === name ? 'block' : 'none';
-  });
-  document.querySelectorAll('.sp-tab').forEach((el, i) => {
-    el.classList.toggle('active', ['details','evidence','notes','history'][i] === name);
-  });
-}
-
-function renderEvList() {
-  return PANEL_EV.map((ev, i) => `<div class="ev-item">
-    <span style="font-size:16px">${fileIcon(ev.name||ev)}</span>
-    <div class="ev-name">${esc(ev.name||ev)}</div>
-    ${ev.url ? `<a href="${esc(ev.url)}" target="_blank" style="font-size:10px;color:var(--blue)">→ Link</a>` : ''}
-    <div class="ev-meta">${ev.added_at ? relTime(ev.added_at) : ev.file_type || ''}</div>
-    <button class="ev-del" onclick="removeEv(${i})">✕</button>
-  </div>`).join('');
-}
-
-function renderNotesList() {
-  return PANEL_NOTES.map(n => {
-    const body = typeof n === 'object' ? (n.body || n.text || '') : n;
-    const time = typeof n === 'object' ? (n.created_at || n.time) : null;
-    return `<div class="note-item">
-      <div class="note-body">${esc(body)}</div>
-      <div class="note-time">${relTime(time)}</div>
-    </div>`;
-  }).join('');
-}
-
-function addEvFiles(files) {
-  Array.from(files).forEach(f => {
-    PANEL_EV.push({ name: f.name, file_type: f.name.split('.').pop(), added_at: new Date().toISOString() });
-  });
-  const el = document.getElementById('ev-list');
-  if (el) el.innerHTML = renderEvList();
-}
-
-function addManualEv() {
-  const el = document.getElementById('ev-manual');
-  if (!el || !el.value.trim()) return;
-  const val = el.value.trim();
-  const isUrl = val.startsWith('http');
-  PANEL_EV.push({ name: val, url: isUrl ? val : null, file_type: 'reference', added_at: new Date().toISOString() });
-  el.value = '';
-  const listEl = document.getElementById('ev-list');
-  if (listEl) listEl.innerHTML = renderEvList();
-}
-
-function removeEv(i) {
-  PANEL_EV.splice(i, 1);
-  const el = document.getElementById('ev-list');
-  if (el) el.innerHTML = renderEvList();
-}
-
-function addNote() {
-  const el = document.getElementById('note-inp');
-  if (!el || !el.value.trim()) return;
-  PANEL_NOTES.push({ body: el.value.trim(), created_at: new Date().toISOString(), author: 'Alyssa', note_type: 'note' });
-  el.value = '';
-  const listEl = document.getElementById('notes-list');
-  if (listEl) listEl.innerHTML = renderNotesList();
-  toast('Note added');
-}
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
 async function saveTicket() {
-  const title = document.getElementById('f-title')?.value.trim();
-  const mod   = document.getElementById('f-module')?.value;
-  if (!title) return toast('Enter a ticket title', 'warn');
-
-  const isFed = mod === 'fedramp';
+  const id = document.getElementById('ticketId').value;
   const payload = {
-    module:       mod,
-    ticket_ref:   document.getElementById('f-ref')?.value.trim() || null,
-    title,
-    description:  document.getElementById('f-desc')?.value.trim() || null,
-    ticket_type:  document.getElementById('f-type')?.value || null,
-    priority:     document.getElementById('f-priority')?.value || 'medium',
-    status:       document.getElementById('f-status')?.value || 'open',
-    assignee:     document.getElementById('f-assignee')?.value.trim() || null,
-    start_date:   document.getElementById('f-start')?.value || null,
-    deadline:     document.getElementById('f-deadline')?.value || null,
-    work_performed: document.getElementById('f-work')?.value.trim() || null,
-    ...(isFed ? {
-      control_id:    document.getElementById('f-control')?.value.trim() || null,
-      poam_id:       document.getElementById('f-poam')?.value.trim() || null,
-      risk_level:    document.getElementById('f-risk')?.value || null,
-      deviation_type: document.getElementById('f-dev')?.value || null,
-    } : {}),
-    evidence: PANEL_EV,
-    notes:    PANEL_NOTES,
-    updated_at: new Date().toISOString()
+    title: document.getElementById('t-title').value,
+    description: document.getElementById('t-desc').value,
+    priority: document.getElementById('t-priority').value,
+    status: document.getElementById('t-status').value,
+    workstream: document.getElementById('t-workstream').value,
+    owner: document.getElementById('t-owner').value,
+    phase: document.getElementById('t-phase').value,
+    evidence: document.getElementById('t-evidence').value,
+    workPerformed: document.getElementById('t-work').value,
+    updatedAt: now()
   };
 
-  if (ACTIVE_ID) {
-    const idx = TICKETS.findIndex(t => t.id === ACTIVE_ID);
-    if (idx !== -1) {
-      TICKETS[idx] = { ...TICKETS[idx], ...payload };
-      await persistTicket(TICKETS[idx]);
-      toast('Ticket saved');
-    }
+  if (id) {
+    // Update
+    await supabase.from('secops_tickets').update(payload).eq('id', id);
   } else {
-    const newId = DEMO ? 'demo_' + Date.now() : null;
-    const newT  = { ...payload, id: newId, created_at: new Date().toISOString() };
-    if (!DEMO && SB) {
-      const { data, error } = await SB.from('tickets').insert([{ ...payload }]).select();
-      if (error) return toast('Save failed: ' + error.message, 'danger');
-      newT.id = data[0].id;
-    }
-    TICKETS.push(newT);
-    toast('Ticket created');
+    // New
+    payload.createdAt = now();
+    await supabase.from('secops_tickets').insert([payload]);
   }
-  closePanel(); updateCounts();
-  if (VIEW === 'kanban') renderKanban();
-  else if (MODULES[VIEW]) renderModule(VIEW);
-  else renderDashboard();
+
+  await loadData();
+  closeModal('ticketModal');
+  showToast('Ticket updated in Supabase');
+  if (currentView === 'dashboard') renderDashboard();
+  if (currentView === 'tickets') renderTickets();
+  if (currentView === 'kanban') renderKanban();
 }
 
-async function persistTicket(t) {
-  if (DEMO || !SB) return;
-  const { evidence, notes, ...rest } = t;
-  await SB.from('tickets').update({ ...rest, updated_at: new Date().toISOString() }).eq('id', t.id);
+function showTicketDetail(id) {
+  const t = tickets.find(x => x.id === id || x.id.toString() === id.toString());
+  if (!t) return;
+  
+  const content = document.getElementById('detailContent');
+  document.getElementById('d-title-top').textContent = t.title;
+  
+  content.innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-field">
+        <div class="detail-label">Status</div>
+        <div class="detail-value"><span class="status-badge status-${t.status.replace(' ', '')}">${t.status}</span></div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Priority</div>
+        <div class="detail-value"><span class="priority-badge priority-${t.priority}">${t.priority}</span></div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Workstream</div>
+        <div class="detail-value-mono">${t.workstream}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Current Owner</div>
+        <div class="detail-value">${t.owner}</div>
+      </div>
+      <div class="detail-field full">
+        <div class="detail-label">Description</div>
+        <div class="detail-text">${t.description}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Finding Phase</div>
+        <div class="detail-value">${t.phase || 'N/A'}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Evidence Link/ID</div>
+        <div class="detail-value-mono">${t.evidence || 'None'}</div>
+      </div>
+      <div class="detail-field full">
+        <div class="detail-label">Work Performed</div>
+        <div class="detail-text">${t.workPerformed || 'No work logged yet.'}</div>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('btnEdit').onclick = () => openEditModal(t.id);
+  document.getElementById('btnDelete').onclick = () => deleteTicket(t.id);
+  document.getElementById('detailModal').style.display = 'flex';
 }
 
-async function deleteCurrentTicket() {
-  if (!ACTIVE_ID || !confirm('Delete this ticket permanently?')) return;
-  const idx = TICKETS.findIndex(t => t.id === ACTIVE_ID);
-  if (idx !== -1) TICKETS.splice(idx, 1);
-  if (!DEMO && SB) await SB.from('tickets').delete().eq('id', ACTIVE_ID);
-  closePanel(); toast('Ticket deleted'); updateCounts();
-  if (VIEW === 'kanban') renderKanban();
-  else if (MODULES[VIEW]) renderModule(VIEW);
-  else renderDashboard();
+function openEditModal(id) {
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+  
+  closeModal('detailModal');
+  document.getElementById('ticketId').value = t.id;
+  document.getElementById('t-title').value = t.title;
+  document.getElementById('t-desc').value = t.description;
+  document.getElementById('t-priority').value = t.priority;
+  document.getElementById('t-status').value = t.status;
+  document.getElementById('t-workstream').value = t.workstream;
+  document.getElementById('t-owner').value = t.owner;
+  document.getElementById('t-phase').value = t.phase || 'Discovery';
+  document.getElementById('t-evidence').value = t.evidence || '';
+  document.getElementById('t-work').value = t.workPerformed || '';
+  
+  document.getElementById('modalTitle').textContent = 'Edit Ticket';
+  document.getElementById('ticketModal').style.display = 'flex';
 }
 
-async function deleteTicketById(id) {
-  if (!confirm('Delete this ticket?')) return;
-  const idx = TICKETS.findIndex(t => t.id === id);
-  if (idx !== -1) TICKETS.splice(idx, 1);
-  if (!DEMO && SB) await SB.from('tickets').delete().eq('id', id);
-  toast('Deleted'); updateCounts();
-  if (MODULES[VIEW]) renderModule(VIEW);
-}
-
-// ═══════════════════════════════════════════════════════
-//  STICKIES
-// ═══════════════════════════════════════════════════════
-let dragStickyId = null;
-let dragOffX = 0, dragOffY = 0;
-
-function renderStickies() {
-  const board = document.getElementById('stickies-board');
-  if (!board) return;
-  board.innerHTML = STICKIES.map(s => `
-    <div class="sticky ${s.color||'yellow'}" id="sticky-${s.id}"
-      style="left:${s.position_x||20}px;top:${s.position_y||20}px;width:${s.width||220}px"
-      onmousedown="startStickyDrag(event,'${s.id}')">
-      <button class="sticky-del" onclick="deleteSticky('${s.id}')">✕</button>
-      <div class="sticky-title" contenteditable="true" onblur="saveStickyTitle('${s.id}',this.textContent)" spellcheck="false">${esc(s.title||'Note')}</div>
-      <div class="sticky-body" contenteditable="true" onblur="saveStickyBody('${s.id}',this.textContent)" spellcheck="false">${esc(s.body||'')}</div>
-    </div>`).join('');
-}
-
-function addSticky(color) {
-  const id = 'sticky_' + Date.now();
-  STICKIES.push({ id, color, title: 'New note', body: '', position_x: 40 + Math.random()*200|0, position_y: 40 + Math.random()*150|0, width: 220 });
-  renderStickies();
-}
-
-function saveStickyTitle(id, val) {
-  const s = STICKIES.find(x => x.id === id);
-  if (s) s.title = val;
-}
-function saveStickyBody(id, val) {
-  const s = STICKIES.find(x => x.id === id);
-  if (s) s.body = val;
-}
-
-function deleteSticky(id) {
-  STICKIES = STICKIES.filter(s => s.id !== id);
-  const el = document.getElementById('sticky-' + id);
-  if (el) el.remove();
-}
-
-function startStickyDrag(e, id) {
-  if (e.target.contentEditable === 'true' || e.target.classList.contains('sticky-del')) return;
-  dragStickyId = id;
-  const el = document.getElementById('sticky-' + id);
-  const rect = el.getBoundingClientRect();
-  const board = document.getElementById('stickies-board').getBoundingClientRect();
-  dragOffX = e.clientX - rect.left;
-  dragOffY = e.clientY - rect.top;
-  document.addEventListener('mousemove', moveStickyDrag);
-  document.addEventListener('mouseup', stopStickyDrag);
-}
-
-function moveStickyDrag(e) {
-  if (!dragStickyId) return;
-  const board = document.getElementById('stickies-board');
-  const el = document.getElementById('sticky-' + dragStickyId);
-  if (!el || !board) return;
-  const br = board.getBoundingClientRect();
-  const x = Math.max(0, e.clientX - br.left - dragOffX);
-  const y = Math.max(0, e.clientY - br.top - dragOffY);
-  el.style.left = x + 'px';
-  el.style.top  = y + 'px';
-}
-
-function stopStickyDrag() {
-  if (dragStickyId) {
-    const el = document.getElementById('sticky-' + dragStickyId);
-    if (el) {
-      const s = STICKIES.find(x => x.id === dragStickyId);
-      if (s) { s.position_x = parseInt(el.style.left); s.position_y = parseInt(el.style.top); }
-    }
+async function deleteTicket(id) {
+  if (confirm('Delete this finding permanently?')) {
+    await supabase.from('secops_tickets').delete().eq('id', id);
+    await loadData();
+    closeModal('detailModal');
+    showToast('Record deleted');
+    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'tickets') renderTickets();
+    if (currentView === 'kanban') renderKanban();
   }
-  dragStickyId = null;
-  document.removeEventListener('mousemove', moveStickyDrag);
-  document.removeEventListener('mouseup', stopStickyDrag);
 }
 
-// ═══════════════════════════════════════════════════════
-//  EXPORT
-// ═══════════════════════════════════════════════════════
-function exportCSV() {
-  const headers = ['id','module','ticket_ref','title','description','ticket_type','priority','status','deadline','start_date','assignee','work_performed','notes_count','evidence_count'];
-  const rows = TICKETS.map(t => headers.map(h => {
-    const v = h === 'notes_count' ? (t.notes||[]).length : h === 'evidence_count' ? (t.evidence||[]).length : (t[h] || '');
-    return `"${String(v).replace(/"/g,'""')}"`;
-  }).join(','));
-  const csv = [headers.join(','), ...rows].join('\n');
-  downloadFile(csv, 'nexus-ops-' + today() + '.csv', 'text/csv');
-  toast('CSV exported');
-}
-function exportJSON() {
-  downloadFile(JSON.stringify({ tickets: TICKETS, uar: UAR }, null, 2), 'nexus-ops-' + today() + '.json', 'application/json');
-  toast('JSON exported');
-}
-function downloadFile(content, name, type) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([content], { type }));
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
+// ===== COMPLIANCE RENDERING =====
+function renderUarTable() {
+  const grid = document.getElementById('uarGrid');
+  grid.innerHTML = '';
+
+  uarCampaigns.forEach(c => {
+    const phases = ['Scoping', 'Certification', 'Review', 'Closure'];
+    const currentPhaseIdx = phases.indexOf(c.phase);
+    
+    const card = document.createElement('div');
+    card.className = 'uar-campaign-card';
+    card.innerHTML = `
+      <div class="uar-camp-header">
+        <div>
+          <div class="uar-camp-name">${c.name}</div>
+          <div class="uar-camp-type">${c.type}</div>
+        </div>
+        <div class="tm-badge status-badge status-InProgress">${c.phase}</div>
+      </div>
+      <div class="uar-phase-track">
+        ${phases.map((p, idx) => `
+          <div class="uar-phase-dot ${idx <= currentPhaseIdx ? 'done' : ''} ${idx === currentPhaseIdx ? 'active' : ''}"></div>
+        `).join('')}
+      </div>
+      <div style="font-size: 11px; margin-bottom: 8px;"><strong>Systems:</strong> ${c.systems}</div>
+      <div class="uar-camp-meta">
+        <span>Owner: ${c.owner}</span>
+        <span>Due: ${c.due}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
 }
 
-// ═══════════════════════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════════════════════
-function statusPill(s) {
-  const map = { backlog:'gray', open:'amber', in_progress:'blue', in_review:'violet', blocked:'coral', closed:'green' };
-  const lbl = STATUS_COLS[s]?.label || s;
-  return `<span class="pill pill-${map[s]||'gray'}">${lbl}</span>`;
-}
-function prioPill(p) {
-  const map = { critical:'coral', high:'amber', medium:'blue', low:'gray' };
-  return `<span class="pill pill-${map[p]||'gray'}"><span class="pdot pdot-${p}"></span>${(p||'low').charAt(0).toUpperCase()+(p||'low').slice(1)}</span>`;
-}
-function modPill(mod) {
-  return { idam:'blue', servicenow:'cyan', fedramp:'violet', gcp:'amber' }[mod] || 'gray';
-}
-function pill(label, cls) { return `<span class="pill pill-${cls}">${label}</span>`; }
-function fileIcon(name) {
-  if (!name) return '📄';
-  const ext = (name.split('.').pop()||'').toLowerCase();
-  return { pdf:'📕', doc:'📘', docx:'📘', xls:'📗', xlsx:'📗', csv:'📗', png:'🖼', jpg:'🖼', jpeg:'🖼', zip:'🗜', txt:'📃', pptx:'📊' }[ext] || '📄';
-}
-function relTime(iso) {
-  if (!iso) return 'recently';
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff/60000), h = Math.floor(m/60), d = Math.floor(h/24);
-  if (d > 60) return new Date(iso).toLocaleDateString('en-ZA');
-  if (d > 0) return d + 'd ago';
-  if (h > 0) return h + 'h ago';
-  if (m > 0) return m + 'm ago';
-  return 'just now';
-}
-function today() { return new Date().toISOString().split('T')[0]; }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function toast(msg, type='success') {
-  const el = document.getElementById('toast');
-  const dot = document.getElementById('toast-dot');
-  const colors = { success:'var(--green)', warn:'var(--amber)', danger:'var(--coral)', info:'var(--blue)' };
-  dot.style.background = colors[type]||colors.success;
-  document.getElementById('toast-msg').textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2800);
+// ===== SCRATCHPAD / NOTES =====
+function renderNotes() {
+  const board = document.getElementById('notesBoard');
+  board.innerHTML = '';
+
+  if (notesData.length === 0) {
+    notesData = [{ id: genId(), title: 'General Investigation', notes: [] }];
+  }
+
+  notesData.forEach(section => {
+    const sec = document.createElement('div');
+    sec.className = 'note-section';
+    sec.innerHTML = `
+      <div class="note-section-header">
+        <input class="note-section-title" value="${section.title}" onchange="updateNoteSectionTitle('${section.id}', this.value)">
+        <button class="btn-danger btn-sm" onclick="deleteNoteSection('${section.id}')">Delete</button>
+      </div>
+      <div class="stickies-row" id="section-${section.id}"></div>
+    `;
+    board.appendChild(sec);
+
+    const row = document.getElementById(`section-${section.id}`);
+    section.notes.forEach(note => {
+      const sticky = document.createElement('div');
+      sticky.className = 'sticky-note';
+      sticky.style.background = getStickyColor(note.color).bg;
+      sticky.style.color = getStickyColor(note.color).text;
+      
+      sticky.innerHTML = `
+        <button class="sticky-note-delete" onclick="deleteNote('${section.id}', '${note.id}')">×</button>
+        <textarea onchange="updateNoteText('${section.id}', '${note.id}', this.value)">${note.text}</textarea>
+      `;
+      row.appendChild(sticky);
+    });
+  });
 }
 
-// ═══════════════════════════════════════════════════════
-//  PANEL OPEN/CLOSE
-// ═══════════════════════════════════════════════════════
-function openPanel() {
-  document.getElementById('panel-overlay').classList.add('open');
-  document.getElementById('side-panel').classList.add('open');
+async function updateNoteText(sectionId, noteId, text) {
+  const section = notesData.find(s => s.id === sectionId);
+  const note = section.notes.find(n => n.id === noteId);
+  note.text = text;
+  await supabase.from('notes_data').upsert(notesData);
 }
-function closePanel() {
-  document.getElementById('panel-overlay').classList.remove('open');
-  document.getElementById('side-panel').classList.remove('open');
-  ACTIVE_ID = null; PANEL_EV = []; PANEL_NOTES = [];
-}
-function closePanelClick(e) { if (e.target === document.getElementById('panel-overlay')) closePanel(); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
 
-// ═══════════════════════════════════════════════════════
-//  DEFAULT DATA
-// ═══════════════════════════════════════════════════════
-function defaultUAR() {
-  return {
-    cycle_name: 'Q2-2025 UAR',
-    quarter: 'Q2-2025',
-    scope: '',
-    scoping_status: 'done',      scoping_date: '',      scoping_notes: '',
-    data_collection_status: 'done', data_collection_date: '', data_collection_notes: '',
-    review_status: 'active',     review_date: '',       review_notes: '',
-    exceptions_status: 'pending', exceptions_date: '',   exceptions_notes: '',
-    remediation_status: 'pending', remediation_date: '', remediation_notes: '',
-    signoff_status: 'pending',   signoff_date: '',       signoff_notes: ''
+async function addNote(color) {
+  if (notesData.length === 0) notesData.push({ id: genId(), title: 'General', notes: [] });
+  const section = notesData[0];
+  section.notes.push({ id: genId(), text: '', color: color });
+  await supabase.from('notes_data').upsert(notesData);
+  renderNotes();
+}
+
+function getStickyColor(name) {
+  const colors = {
+    yellow: { bg: '#fef08a', text: '#854d0e' },
+    blue: { bg: '#bfdbfe', text: '#1e3a8a' },
+    green: { bg: '#bbf7d0', text: '#166534' },
+    purple: { bg: '#ddd6fe', text: '#5b21b6' }
   };
+  return colors[name] || colors.yellow;
 }
 
-function uarDoneCount() {
-  const u = UAR || defaultUAR();
-  return UAR_STAGES.filter(s => u[s.id+'_status'] === 'done').length;
-}
-function uarActiveStage() {
-  const u = UAR || defaultUAR();
-  return UAR_STAGES.find(s => u[s.id+'_status'] === 'active');
-}
-
-function sampleTickets() {
-  const d = (n) => { const dt = new Date(); dt.setDate(dt.getDate()+n); return dt.toISOString().split('T')[0]; };
-  return [
-    { id:'t1', module:'idam', ticket_ref:'INC-0042', title:'MFA token rollout — privileged users Group A', description:'Deploy hardware or software MFA tokens to all privileged user accounts. Coordinate with IT ops for scheduling training sessions and token distribution.', ticket_type:'MFA/SSO', priority:'high', status:'in_progress', deadline: d(7), start_date: d(-3), assignee:'Alyssa', work_performed:'User mapping completed. Vendor tokens ordered.', evidence:[{ name:'user-mapping-v2.xlsx', file_type:'xlsx', added_at: new Date().toISOString() }], notes:[{ body:'Called vendor support re: bulk provisioning API.', created_at: new Date(Date.now()-86400000).toISOString() }], created_at: new Date(Date.now()-432000000).toISOString(), updated_at: new Date().toISOString() },
-    { id:'t2', module:'idam', ticket_ref:'INC-0039', title:'Stale account audit — inactive >90 days', description:'Audit all user accounts that have been inactive for more than 90 days and flag for deprovisioning per policy.', ticket_type:'Account Audit', priority:'medium', status:'open', deadline: d(14), evidence:[], notes:[], created_at: new Date(Date.now()-259200000).toISOString(), updated_at: new Date().toISOString() },
-    { id:'t3', module:'servicenow', ticket_ref:'SN-1201', title:'LDAP sync failure — on-prem to Azure AD', description:'On-prem LDAP failing to sync to cloud every 6 hours. Error 0x8007052E observed in event logs. Affects ~240 accounts.', ticket_type:'LDAP Issue', priority:'critical', status:'blocked', deadline: d(-2), evidence:[], notes:[{ body:'Escalated to Tier 3 network team. Awaiting firewall rule review.', created_at: new Date(Date.now()-3600000).toISOString() }], created_at: new Date(Date.now()-86400000).toISOString(), updated_at: new Date().toISOString() },
-    { id:'t4', module:'servicenow', ticket_ref:'SN-1185', title:'Password policy update — NIST 800-63B alignment', description:'Update default password policy to align with NIST 800-63B: remove complexity requirements, enforce length-based policy, check against breached password lists.', ticket_type:'Service Request', priority:'medium', status:'closed', deadline: d(-5), work_performed:'Policy updated in AD and documented in SSP appendix.', evidence:[{ name:'password-policy-v3.docx', file_type:'docx', added_at: new Date().toISOString() }], notes:[], created_at: new Date(Date.now()-864000000).toISOString(), updated_at: new Date().toISOString() },
-    { id:'t5', module:'fedramp', ticket_ref:'FED-088', title:'POA&M — Logging gaps in ConMon (AC-2, AU-2)', description:'3PAO assessment identified logging gaps. Monthly scan evidence not meeting AU-2 requirements. POA&M item must be remediated within 90 days per Moderate risk timeline.', ticket_type:'POA&M Item', priority:'high', status:'in_progress', control_id:'AU-2', poam_id:'POA&M-2025-012', risk_level:'Moderate', deadline: d(30), evidence:[], notes:[], created_at: new Date(Date.now()-604800000).toISOString(), updated_at: new Date().toISOString() },
-    { id:'t6', module:'fedramp', ticket_ref:'FED-071', title:'SSP documentation — AC-2 account management gap', description:'System Security Plan section 2.3 (Account Management) incomplete. Control AC-2 narrative does not describe automated provisioning workflow.', ticket_type:'SSP Gap', priority:'critical', status:'in_review', control_id:'AC-2', risk_level:'High', deadline: d(3), work_performed:'Draft section completed and submitted to ISSO for review.', evidence:[{ name:'AC-2-narrative-draft.docx', file_type:'docx', added_at: new Date().toISOString() }], notes:[], created_at: new Date(Date.now()-518400000).toISOString(), updated_at: new Date().toISOString() },
-    { id:'t7', module:'gcp', ticket_ref:'GCP-001', title:'IAM org policy — restrict service account creation', description:'Configure org-level IAM policies to restrict service account creation to designated project admins only. Implement workload identity federation where possible.', ticket_type:'IAM / Access', priority:'high', status:'open', deadline: d(5), evidence:[], notes:[], created_at: new Date(Date.now()-86400000).toISOString(), updated_at: new Date().toISOString() },
-    { id:'t8', module:'gcp', ticket_ref:'GCP-002', title:'VPC network segmentation — multi-tier architecture', description:'Design and implement VPC network segmentation per cloud security architecture doc. Separate data, app, and management tiers with firewall rules.', ticket_type:'Networking / VPC', priority:'medium', status:'backlog', deadline: d(25), evidence:[], notes:[], created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
-  ];
+// ===== UI HELPERS =====
+function toggleProcessBanner() {
+  const body = document.getElementById('processBody');
+  const icon = document.getElementById('processIcon');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    icon.classList.remove('rotated');
+  } else {
+    body.style.display = 'none';
+    icon.classList.add('rotated');
+  }
 }
 
-// ═══════════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════════
-(function init() {
-  const savedUrl = localStorage.getItem('nx_url');
-  const savedKey = localStorage.getItem('nx_key');
-  if (savedUrl) document.getElementById('sb-url').value = savedUrl;
-  if (savedKey) document.getElementById('sb-key').value = savedKey;
-  UAR = defaultUAR();
-})();
+function useTemplate(key) {
+  const templates = {
+    bucket_public: { title: 'Remediate Public Storage Bucket', desc: 'Identify bucket with allUsers IAM binding, remove public access, and verify SCC closure.', ws: 'Storage', pri: 'Critical' },
+    iam_unused: { title: 'Purge Unused IAM Identities', desc: 'LexisNexis Compliance: Review identities with no logins in 90 days. Revoke access.', ws: 'IAM', pri: 'High' }
+  };
+  const t = templates[key];
+  if (t) {
+    openAddTicketModal();
+    document.getElementById('t-title').value = t.title;
+    document.getElementById('t-desc').value = t.desc;
+    document.getElementById('t-workstream').value = t.ws;
+    document.getElementById('t-priority').value = t.pri;
+  }
+}
+
+function showToast(msg, color = 'var(--cyan)') {
+  const toast = document.getElementById('toast');
+  const toastMsg = document.getElementById('toastMsg');
+  toastMsg.textContent = msg;
+  toast.style.borderLeftColor = color;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ===== INIT =====
+async function init() {
+  await loadData();
+  
+  // Update DB status indicator
+  const indicator = document.getElementById('dbIndicator');
+  if (indicator) {
+    indicator.textContent = 'SUPABASE_REST';
+    indicator.style.color = 'var(--cyan)';
+  }
+
+  showView('dashboard');
+
+  // Sidebar toggle
+  document.getElementById('menuToggle').onclick = () => {
+    document.getElementById('sidebar').classList.toggle('open');
+  };
+
+  // Nav clicks
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.onclick = (e) => {
+      e.preventDefault();
+      showView(item.dataset.view);
+    };
+  });
+}
+
+window.onload = init;
 </script>
 </body>
 </html>
