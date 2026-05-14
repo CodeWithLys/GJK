@@ -1,6 +1,6 @@
 // 1. Tell the app where your database is
-const supabaseUrl = 'YOUR_SUPABASE_URL_HERE';
-const supabaseKey = 'YOUR_SUPABASE_ANON_KEY_HERE';
+const supabaseUrl = 'https://faiyfikfydlebxscupjt.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhaXlmaWtmeWRsZWJ4c2N1cGp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MTQ0ODYsImV4cCI6MjA5NDA5MDQ4Nn0.dAtU3LTfkJg4XYfVndpe5-X6ZNwg1fcJkouiWD4f4qM';
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // 2. The function to get information
