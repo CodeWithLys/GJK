@@ -1,17 +1,2638 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Security Tracker</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galatia's Security Progress Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0b0d;
+  --bg-card: #111318;
+  --bg-card2: #16191f;
+  --border: #1e2229;
+  --border-subtle: #161a21;
+  --text: #e2e8f0;
+  --text-muted: #6b7280;
+  --text-dim: #374151;
+  --cyan: #22d3ee;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --violet: #a78bfa;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --sidebar-w: 220px;
+  --topbar-h: 56px;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-main: 'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-main);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: #0d0f13;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  z-index: 100;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-icon { color: var(--cyan); display: flex; align-items: center; }
+.logo-text { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+.logo-accent { color: var(--cyan); }
+
+.sidebar-section-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+  padding: 16px 20px 6px;
+  text-transform: uppercase;
+}
+
+.nav-items { padding: 4px 12px; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s;
+  margin-bottom: 1px;
+}
+
+.nav-item:hover { background: rgba(34,211,238,0.06); color: var(--text); }
+.nav-item.active { background: rgba(34,211,238,0.1); color: var(--cyan); }
+
+.sidebar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  margin-top: auto;
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 8px var(--emerald);
+  animation: pulse-dot 2s infinite;
+}
+
+.status-text { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+
+.sidebar-db-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 20px 18px;
+}
+
+.db-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+.db-indicator { color: var(--emerald); font-size: 10px; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ===== MAIN ===== */
+.main {
+  margin-left: var(--sidebar-w);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== TOPBAR ===== */
+.topbar {
+  height: var(--topbar-h);
+  background: #0d0f13;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+
+.menu-toggle {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 4px;
+  border-radius: 4px;
+  display: none;
+}
+
+.breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.search-bar input {
+  background: none; border: none; outline: none;
+  color: var(--text); font-size: 12px; width: 180px;
+}
+
+.search-bar input::placeholder { color: var(--text-dim); }
+.search-bar svg { color: var(--text-dim); }
+
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600;
+  color: #000; cursor: pointer;
+}
+
+/* ===== VIEWS ===== */
+.view-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 28px 40px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+.view-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.view-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.view-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 700px;
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+  background: var(--cyan);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btn-primary:hover { background: #06b6d4; }
+
+.btn-ghost {
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: all 0.15s;
+}
+
+.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-danger { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; }
+.btn-danger:hover { background: rgba(248,113,113,0.25); }
+
+/* ===== KPI GRID ===== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.kpi-card:hover { border-color: rgba(34,211,238,0.3); }
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.kpi-card[data-color="cyan"]::before { background: var(--cyan); }
+.kpi-card[data-color="amber"]::before { background: var(--amber); }
+.kpi-card[data-color="emerald"]::before { background: var(--emerald); }
+.kpi-card[data-color="violet"]::before { background: var(--violet); }
+.kpi-card[data-color="red"]::before { background: var(--red); }
+
+.kpi-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+}
+
+.kpi-sub { font-size: 10px; color: var(--text-dim); margin-bottom: 10px; }
+
+.kpi-sparkbar { height: 3px; background: var(--bg-card2); border-radius: 2px; overflow: hidden; }
+.kpi-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+/* ===== CHARTS ===== */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* ===== BADGES ===== */
+.badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.badge-live { background: rgba(52,211,153,0.15); color: var(--emerald); border: 1px solid rgba(52,211,153,0.3); }
+.badge-amber { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+.badge-red { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.badge-cyan { background: rgba(34,211,238,0.15); color: var(--cyan); border: 1px solid rgba(34,211,238,0.3); }
+.badge-violet { background: rgba(167,139,250,0.15); color: var(--violet); border: 1px solid rgba(167,139,250,0.3); }
+
+/* ===== HEALTH GRID ===== */
+.health-grid { display: flex; flex-direction: column; gap: 14px; }
+.health-row { display: flex; align-items: center; gap: 12px; }
+.health-label { font-size: 11px; color: var(--text-muted); width: 130px; flex-shrink: 0; }
+.health-bar { flex: 1; height: 4px; background: var(--bg-card2); border-radius: 2px; overflow: hidden; }
+.health-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+.health-pct { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); width: 32px; text-align: right; }
+
+/* ===== TICKET MINI LIST ===== */
+.ticket-list-mini { display: flex; flex-direction: column; gap: 0; }
+.ticket-mini {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  gap: 10px;
+}
+.ticket-mini:hover .tm-title { color: var(--cyan); }
+.ticket-mini:last-child { border-bottom: none; }
+.tm-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.tm-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.tm-info { min-width: 0; }
+.tm-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.15s; }
+.tm-sub { font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); }
+.tm-badge { font-family: var(--font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; white-space: nowrap; }
+
+/* ===== PROCESS BANNER ===== */
+.process-banner {
+  background: rgba(34,211,238,0.04);
+  border: 1px solid rgba(34,211,238,0.12);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.process-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.process-banner-header:hover { background: rgba(34,211,238,0.06); }
+
+.process-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.collapse-icon {
+  color: var(--text-dim);
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.collapse-icon.rotated { transform: rotate(-90deg); }
+
+.process-banner-body {
+  padding: 0 18px 16px;
+  border-top: 1px solid rgba(34,211,238,0.08);
+}
+
+.process-stages {
+  display: flex;
+  gap: 0;
+  margin: 16px 0 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.process-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 140px;
+  position: relative;
+  padding: 0 12px;
+  text-align: center;
+}
+
+.process-stage::after {
+  content: '';
+  position: absolute;
+  top: 14px; right: -1px;
+  width: 24px; height: 1px;
+  background: var(--border);
+}
+
+.process-stage:last-child::after { display: none; }
+
+.stage-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(34,211,238,0.15);
+  border: 1px solid rgba(34,211,238,0.3);
+  color: var(--cyan);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 700;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.stage-title { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.stage-desc { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
+
+.common-issues-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.ci-title { font-size: 10px; font-weight: 700; color: var(--amber); font-family: var(--font-mono); letter-spacing: 0.06em; margin-bottom: 6px; }
+.ci-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ci-tag {
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.2);
+  color: var(--amber);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: background 0.15s;
+}
+.ci-tag:hover { background: rgba(251,191,36,0.18); }
+
+/* ===== FILTER BAR ===== */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-group label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.filter-group select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ===== TICKET GRID ===== */
+.ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.ticket-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.ticket-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+
+.ticket-card:hover { border-color: rgba(34,211,238,0.3); transform: translateY(-1px); }
+
+.ticket-card[data-priority="Critical"]::before { background: var(--red); }
+.ticket-card[data-priority="High"]::before { background: var(--amber); }
+.ticket-card[data-priority="Medium"]::before { background: var(--blue); }
+.ticket-card[data-priority="Low"]::before { background: var(--text-dim); }
+
+.tc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.tc-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; flex: 1; }
+.tc-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+.tc-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.tc-id { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+.tc-workstream { font-family: var(--font-mono); font-size: 9px; color: var(--cyan); background: rgba(34,211,238,0.08); padding: 2px 6px; border-radius: 3px; }
+
+.tc-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.tc-footer { display: flex; justify-content: space-between; align-items: center; }
+.tc-date { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+
+/* Status badges */
+.status-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-Backlog { background: rgba(107,114,128,0.2); color: #9ca3af; }
+.status-InProgress { background: rgba(34,211,238,0.15); color: var(--cyan); }
+.status-Review { background: rgba(167,139,250,0.15); color: var(--violet); }
+.status-Blocked { background: rgba(248,113,113,0.15); color: var(--red); }
+.status-Done { background: rgba(52,211,153,0.15); color: var(--emerald); }
+
+.priority-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.priority-Critical { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.priority-High { background: rgba(251,191,36,0.12); color: var(--amber); }
+.priority-Medium { background: rgba(96,165,250,0.12); color: var(--blue); }
+.priority-Low { background: rgba(107,114,128,0.1); color: #9ca3af; }
+
+/* ===== UAR SECTION ===== */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-header h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+
+.uar-campaigns-section { margin-bottom: 24px; }
+
+.uar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+
+.uar-campaign-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.uar-campaign-card:hover { border-color: rgba(52,211,153,0.3); }
+
+.uar-camp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
+.uar-camp-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.uar-camp-type { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+
+.uar-phase-track {
+  display: flex;
+  gap: 3px;
+  margin: 12px 0 8px;
+}
+
+.uar-phase-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-card2);
+}
+
+.uar-phase-dot.active { background: var(--emerald); }
+.uar-phase-dot.done { background: rgba(52,211,153,0.4); }
+
+.uar-camp-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); }
+
+/* ===== FEDRAMP TRACKER ===== */
+.fedramp-tracker-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.auth-journey {
+  display: flex;
+  gap: 0;
+  position: relative;
+  margin-top: 12px;
+}
+
+.auth-phase {
+  flex: 1;
+  position: relative;
+  padding: 12px 16px 12px 0;
+}
+
+.auth-phase::after {
+  content: '→';
+  position: absolute;
+  right: -6px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  font-size: 16px;
+  z-index: 1;
+}
+
+.auth-phase:last-child::after { display: none; }
+
+.ap-block {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  transition: border-color 0.15s;
+}
+
+.ap-block.current {
+  border-color: var(--cyan);
+  background: rgba(34,211,238,0.05);
+  box-shadow: 0 0 20px rgba(34,211,238,0.1);
+}
+
+.ap-block.complete {
+  border-color: rgba(52,211,153,0.3);
+  background: rgba(52,211,153,0.04);
+}
+
+.ap-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(34,211,238,0.15);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 6px;
+}
+
+.ap-block.complete .ap-num { background: rgba(52,211,153,0.2); color: var(--emerald); }
+
+.ap-label { font-size: 10px; font-weight: 600; color: var(--text); }
+.ap-sub { font-size: 9px; color: var(--text-muted); margin-top: 3px; font-family: var(--font-mono); }
+
+/* ===== CONMON ===== */
+.conmon-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.conmon-items { display: flex; flex-direction: column; gap: 0; }
+.conmon-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.conmon-item:last-child { border-bottom: none; }
+
+.conmon-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ci-green { background: rgba(52,211,153,0.15); color: var(--emerald); }
+.ci-amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+.ci-blue { background: rgba(96,165,250,0.15); color: var(--blue); }
+.ci-violet { background: rgba(167,139,250,0.15); color: var(--violet); }
+.ci-red { background: rgba(248,113,113,0.15); color: var(--red); }
+
+.conmon-text { flex: 1; }
+.conmon-text strong { font-size: 12px; color: var(--text); display: block; margin-bottom: 2px; }
+.conmon-text span { font-size: 11px; color: var(--text-muted); }
+.conmon-due { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+
+/* ===== KANBAN ===== */
+.kanban-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.kanban-filters { display: flex; gap: 6px; }
+
+.kanban-filter-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.kanban-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.kanban-filter-btn.active { background: rgba(34,211,238,0.1); border-color: var(--cyan); color: var(--cyan); }
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  min-height: 500px;
+}
+
+.kanban-col {
+  background: rgba(17,19,24,0.6);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+}
+
+.kanban-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.kanban-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+}
+
+.kanban-col-count {
+  background: var(--bg-card2);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.kanban-cards {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100px;
+}
+
+.kanban-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: grab;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.kanban-card:hover { border-color: rgba(34,211,238,0.3); transform: translateY(-1px); }
+.kanban-card:active { cursor: grabbing; }
+.kanban-card.dragging { opacity: 0.5; }
+
+.kanban-card[data-priority="Critical"] { border-left-color: var(--red); }
+.kanban-card[data-priority="High"] { border-left-color: var(--amber); }
+.kanban-card[data-priority="Medium"] { border-left-color: var(--blue); }
+.kanban-card[data-priority="Low"] { border-left-color: var(--text-dim); }
+
+.kc-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; line-height: 1.3; }
+.kc-meta { display: flex; gap: 5px; flex-wrap: wrap; }
+.kc-workstream { font-family: var(--font-mono); font-size: 8px; color: var(--cyan); background: rgba(34,211,238,0.08); padding: 2px 5px; border-radius: 3px; }
+
+/* ===== NOTES ===== */
+.notes-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+
+.sticky-color-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: transform 0.1s;
+}
+
+.sticky-color-btn:hover { transform: scale(1.03); }
+
+.notes-board { display: flex; flex-direction: column; gap: 20px; }
+
+.note-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.note-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.note-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-main);
+  cursor: text;
+  width: 100%;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.note-section-title:focus { background: rgba(255,255,255,0.04); }
+
+.stickies-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sticky-note {
+  width: 180px;
+  min-height: 140px;
+  border-radius: 8px;
+  padding: 12px;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: transform 0.15s;
+}
+
+.sticky-note:hover { transform: rotate(-0.5deg) scale(1.02); }
+
+.sticky-note textarea {
+  width: 100%;
+  height: 100px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: inherit;
+}
+
+.sticky-note-delete {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: rgba(0,0,0,0.2);
+  border: none; border-radius: 50%;
+  width: 18px; height: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  color: inherit;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sticky-note:hover .sticky-note-delete { opacity: 1; }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modal-in 0.2s ease;
+}
+
+.modal-large { max-width: 800px; }
+
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 { font-size: 16px; font-weight: 700; color: var(--text); }
+
+.modal-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 20px;
+  line-height: 1; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; transition: all 0.15s;
+}
+
+.modal-close:hover { background: rgba(248,113,113,0.15); color: var(--red); }
+
+.modal-body { padding: 20px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--border); }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full-width { grid-column: 1 / -1; }
+.form-group label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--font-mono); }
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+  font-family: var(--font-main);
+  transition: border-color 0.15s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: rgba(34,211,238,0.4);
+}
+
+.form-group textarea { resize: vertical; }
+.form-group select { cursor: pointer; }
+
+.common-issues-panel {
+  margin-top: 14px;
+  padding: 12px;
+  background: rgba(251,191,36,0.04);
+  border: 1px solid rgba(251,191,36,0.12);
+  border-radius: 8px;
+}
+
+.ci-panel-title { font-size: 10px; font-weight: 700; color: var(--amber); font-family: var(--font-mono); }
+
+/* ===== DETAIL MODAL ===== */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.detail-field { display: flex; flex-direction: column; gap: 4px; }
+.detail-field.full { grid-column: 1 / -1; }
+.detail-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); }
+.detail-value { font-size: 13px; color: var(--text); }
+.detail-value-mono { font-family: var(--font-mono); font-size: 12px; color: var(--cyan); }
+.detail-text { font-size: 12px; color: var(--text-muted); line-height: 1.5; background: var(--bg-card2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; min-height: 60px; white-space: pre-wrap; }
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cyan);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 999;
+  animation: slide-in 0.25s ease;
+  max-width: 300px;
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  grid-column: 1 / -1;
+}
+
+.empty-state-title { font-size: 14px; color: var(--text-muted); margin-bottom: 8px; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1400px) {
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .charts-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 1100px) {
+  .kanban-board { grid-template-columns: repeat(3, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .auth-journey { flex-direction: column; }
+  .auth-phase::after { display: none; }
+}
+
+@media (max-width: 800px) {
+  :root { --sidebar-w: 0px; }
+  .sidebar { transform: translateX(-220px); width: 220px; }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .menu-toggle { display: flex; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-row { grid-template-columns: 1fr; }
+  .kanban-board { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full-width { grid-column: 1; }
+}
+</style>
 </head>
 <body>
 
-  <h1>My Security Dashboard</h1>
-  <div id="ticket-container">
-    <p>Loading tickets...</p>
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="logo-text">Galatia's<span class="logo-accent"> Tracker</span></span>
   </div>
 
-  <script src="main.js"></script>
+  <div class="sidebar-section-label">NAVIGATION</div>
+  <div class="nav-items">
+    <a class="nav-item active" data-view="dashboard" onclick="showView('dashboard')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" data-view="idam" onclick="showView('idam')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      IDAM Tickets
+    </a>
+    <a class="nav-item" data-view="servicenow" onclick="showView('servicenow')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="1"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      ServiceNow / AD
+    </a>
+    <a class="nav-item" data-view="uar" onclick="showView('uar')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      UAR Process
+    </a>
+    <a class="nav-item" data-view="fedramp" onclick="showView('fedramp')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z"/></svg>
+      FedRAMP
+    </a>
+    <a class="nav-item" data-view="gcp" onclick="showView('gcp')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      GCP Project
+    </a>
+    <a class="nav-item" data-view="kanban" onclick="showView('kanban')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
+      Kanban Board
+    </a>
+    <a class="nav-item" data-view="notes" onclick="showView('notes')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Notes & Stickies
+    </a>
+  </div>
+
+  <div class="sidebar-section-label" style="margin-top:24px;">SYSTEM</div>
+  <div class="sidebar-status">
+    <div class="status-dot online"></div>
+    <span class="status-text">DB Connected</span>
+  </div>
+  <div class="sidebar-db-info" id="dbStatus">
+    <span class="db-label">localStorage</span>
+    <span class="db-indicator" id="dbIndicator">●</span>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main" id="main">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="menu-toggle" onclick="toggleSidebar()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="breadcrumb" id="breadcrumb">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search tickets, tasks..."/>
+      </div>
+      <button class="btn-primary" onclick="openNewTicketModal()">+ New Ticket</button>
+      <div class="avatar">SC</div>
+    </div>
+  </header>
+
+  <!-- VIEWS -->
+  <div class="view-container">
+
+    <!-- DASHBOARD VIEW -->
+    <div id="view-dashboard" class="view active">
+      <div class="view-header">
+        <h1>Galatia's Security Progress Tracker</h1>
+        <p class="view-sub">Real-time overview across IDAM, ServiceNow, UAR, FedRAMP & GCP workstreams</p>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card" data-color="cyan">
+          <div class="kpi-label">IDAM Open Tickets</div>
+          <div class="kpi-value" id="kpi-idam">—</div>
+          <div class="kpi-sub">Identity & Access Mgmt</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width:65%;background:var(--cyan)"></div></div>
+        </div>
+        <div class="kpi-card" data-color="amber">
+          <div class="kpi-label">SNOW Active Incidents</div>
+          <div class="kpi-value" id="kpi-snow">—</div>
+          <div class="kpi-sub">ServiceNow / Active Directory</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width:42%;background:var(--amber)"></div></div>
+        </div>
+        <div class="kpi-card" data-color="emerald">
+          <div class="kpi-label">UAR Completion Rate</div>
+          <div class="kpi-value" id="kpi-uar">—</div>
+          <div class="kpi-sub">User Access Reviews</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width:78%;background:var(--emerald)"></div></div>
+        </div>
+        <div class="kpi-card" data-color="violet">
+          <div class="kpi-label">FedRAMP Controls</div>
+          <div class="kpi-value" id="kpi-fedramp">—</div>
+          <div class="kpi-sub">Compliant / Total</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width:88%;background:var(--violet)"></div></div>
+        </div>
+        <div class="kpi-card" data-color="red">
+          <div class="kpi-label">GCP Resources</div>
+          <div class="kpi-value" id="kpi-gcp">—</div>
+          <div class="kpi-sub">Active cloud assets</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width:55%;background:var(--red)"></div></div>
+        </div>
+        <div class="kpi-card" data-color="cyan">
+          <div class="kpi-label">Critical / Overdue</div>
+          <div class="kpi-value" id="kpi-overdue">—</div>
+          <div class="kpi-sub">Across all workstreams</div>
+          <div class="kpi-sparkbar"><div class="kpi-fill" style="width:20%;background:var(--red)"></div></div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="card-header">
+            <h3>Ticket Volume by Workstream</h3>
+            <span class="badge badge-live">Live</span>
+          </div>
+          <canvas id="chartWorkstream" height="180"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-header"><h3>Status Distribution</h3></div>
+          <canvas id="chartStatus" height="180"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-header"><h3>Priority Breakdown</h3></div>
+          <canvas id="chartPriority" height="180"></canvas>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <h3>Recent Ticket Activity</h3>
+            <button class="btn-ghost" onclick="showView('kanban')">View Kanban →</button>
+          </div>
+          <div id="recentTickets" class="ticket-list-mini"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Workstream Health</h3></div>
+          <div class="health-grid">
+            <div class="health-row">
+              <span class="health-label">IDAM Provisioning</span>
+              <div class="health-bar"><div class="health-fill" style="width:82%;background:var(--cyan)"></div></div>
+              <span class="health-pct">82%</span>
+            </div>
+            <div class="health-row">
+              <span class="health-label">AD Sync Status</span>
+              <div class="health-bar"><div class="health-fill" style="width:99%;background:var(--emerald)"></div></div>
+              <span class="health-pct">99%</span>
+            </div>
+            <div class="health-row">
+              <span class="health-label">UAR Certification</span>
+              <div class="health-bar"><div class="health-fill" style="width:61%;background:var(--amber)"></div></div>
+              <span class="health-pct">61%</span>
+            </div>
+            <div class="health-row">
+              <span class="health-label">FedRAMP ConMon</span>
+              <div class="health-bar"><div class="health-fill" style="width:94%;background:var(--violet)"></div></div>
+              <span class="health-pct">94%</span>
+            </div>
+            <div class="health-row">
+              <span class="health-label">GCP IAM Policy</span>
+              <div class="health-bar"><div class="health-fill" style="width:76%;background:var(--cyan)"></div></div>
+              <span class="health-pct">76%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IDAM VIEW -->
+    <div id="view-idam" class="view">
+      <div class="view-header">
+        <h1>IDAM — Identity & Access Management Tickets</h1>
+        <p class="view-sub">Track provisioning, deprovisioning, role changes, and access requests. Follows NIST SP 1800-2 IdAM workflow stages.</p>
+      </div>
+
+      <div class="process-banner" id="idamProcess">
+        <div class="process-banner-header" onclick="toggleCollapse('idamProcessBody')">
+          <span class="process-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            IDAM Ticket Lifecycle Reference
+          </span>
+          <span class="collapse-icon" id="idamProcessBody-icon">▼</span>
+        </div>
+        <div id="idamProcessBody" class="process-banner-body">
+          <div class="process-stages">
+            <div class="process-stage"><div class="stage-num">1</div><div class="stage-info"><div class="stage-title">Identity Request</div><div class="stage-desc">User/system submits access request. HR/manager approval required. Identity proofing documentation gathered.</div></div></div>
+            <div class="process-stage"><div class="stage-num">2</div><div class="stage-info"><div class="stage-title">Provisioning</div><div class="stage-desc">Digital identity created in Active Directory / IdP. Credentials issued (badge, certs, logical access). Least-privilege applied.</div></div></div>
+            <div class="process-stage"><div class="stage-num">3</div><div class="stage-info"><div class="stage-title">Access Assignment</div><div class="stage-desc">Role-based access controls configured. SSO/MFA enrolled. Resources mapped per job function.</div></div></div>
+            <div class="process-stage"><div class="stage-num">4</div><div class="stage-info"><div class="stage-title">Work Performed</div><div class="stage-desc">Technical implementation documented. Evidence collected (screenshots, AD exports, logs).</div></div></div>
+            <div class="process-stage"><div class="stage-num">5</div><div class="stage-info"><div class="stage-title">Verification & Closure</div><div class="stage-desc">Ticket reviewed, work performed document attached, closed in system. Audit trail complete.</div></div></div>
+          </div>
+          <div class="common-issues-section">
+            <div class="ci-title">⚡ Common Issues</div>
+            <div class="ci-tags">
+              <span class="ci-tag">Orphaned accounts not deprovisioned</span>
+              <span class="ci-tag">Missing MFA enrollment</span>
+              <span class="ci-tag">Excessive privilege granted</span>
+              <span class="ci-tag">AD sync latency</span>
+              <span class="ci-tag">No work performed doc attached</span>
+              <span class="ci-tag">Role not matching job function</span>
+              <span class="ci-tag">Missing manager approval</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>Status</label>
+          <select id="idamStatusFilter" onchange="renderIdamTickets()">
+            <option value="">All</option><option>Backlog</option><option>In Progress</option><option>Review</option><option>Blocked</option><option>Done</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Priority</label>
+          <select id="idamPriorityFilter" onchange="renderIdamTickets()">
+            <option value="">All</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Type</label>
+          <select id="idamTypeFilter" onchange="renderIdamTickets()">
+            <option value="">All</option><option>Onboarding</option><option>Offboarding</option><option>Role Change</option><option>Access Request</option><option>Deprovision</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="openTicketModal('IDAM')">+ Add IDAM Ticket</button>
+      </div>
+      <div id="idamTicketGrid" class="ticket-grid"></div>
+    </div>
+
+    <!-- SERVICENOW VIEW -->
+    <div id="view-servicenow" class="view">
+      <div class="view-header">
+        <h1>ServiceNow — Tickets & Active Directory</h1>
+        <p class="view-sub">Incident management, AD on-prem issues, change requests, and service catalog items.</p>
+      </div>
+
+      <div class="process-banner">
+        <div class="process-banner-header" onclick="toggleCollapse('snowProcessBody')">
+          <span class="process-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            ServiceNow Ticket Lifecycle & AD On-Prem Reference
+          </span>
+          <span class="collapse-icon" id="snowProcessBody-icon">▼</span>
+        </div>
+        <div id="snowProcessBody" class="process-banner-body">
+          <div class="process-stages">
+            <div class="process-stage"><div class="stage-num">1</div><div class="stage-info"><div class="stage-title">Ticket Logged</div><div class="stage-desc">Incident/Request raised in ServiceNow. Categorized (Incident, Change, Service Request, Problem). SNOW ticket ID assigned.</div></div></div>
+            <div class="process-stage"><div class="stage-num">2</div><div class="stage-info"><div class="stage-title">Triage & Assignment</div><div class="stage-desc">Priority assessed (P1-P4). Assigned to appropriate team. SLA clock starts. AD issues routed to identity team.</div></div></div>
+            <div class="process-stage"><div class="stage-num">3</div><div class="stage-info"><div class="stage-title">Investigation</div><div class="stage-desc">Root cause analysis. AD logs reviewed, replication status checked, GPO conflicts investigated. Work notes documented.</div></div></div>
+            <div class="process-stage"><div class="stage-num">4</div><div class="stage-info"><div class="stage-title">Resolution</div><div class="stage-desc">Fix applied. AD object corrected/synced. Changes tracked in SNOW change record. Evidence screenshots captured.</div></div></div>
+            <div class="process-stage"><div class="stage-num">5</div><div class="stage-info"><div class="stage-title">Close & Post-Incident</div><div class="stage-desc">Ticket closed. Post-incident review for P1/P2. Knowledge article created if new issue. SLA performance recorded.</div></div></div>
+          </div>
+          <div class="common-issues-section">
+            <div class="ci-title">⚡ Common AD On-Prem Issues</div>
+            <div class="ci-tags">
+              <span class="ci-tag">AD replication failure</span><span class="ci-tag">Password sync loop</span><span class="ci-tag">Locked account</span><span class="ci-tag">GPO not applying</span><span class="ci-tag">Kerberos pre-auth failure</span><span class="ci-tag">DNS resolution failure</span><span class="ci-tag">SPN conflict</span><span class="ci-tag">Domain trust broken</span><span class="ci-tag">SYSVOL not replicating</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group"><label>Status</label>
+          <select id="snowStatusFilter" onchange="renderSnowTickets()">
+            <option value="">All</option><option>Backlog</option><option>In Progress</option><option>Review</option><option>Blocked</option><option>Done</option>
+          </select>
+        </div>
+        <div class="filter-group"><label>Type</label>
+          <select id="snowTypeFilter" onchange="renderSnowTickets()">
+            <option value="">All</option><option>Incident</option><option>Change Request</option><option>Service Request</option><option>Problem</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="openTicketModal('ServiceNow')">+ Add SNOW Ticket</button>
+      </div>
+      <div id="snowTicketGrid" class="ticket-grid"></div>
+    </div>
+
+    <!-- UAR VIEW -->
+    <div id="view-uar" class="view">
+      <div class="view-header">
+        <h1>UAR — User Access Review</h1>
+        <p class="view-sub">Full lifecycle tracking: Scoping → Inventory → Certification → Remediation → Documentation. Per NIST AC-2 & AC-6 requirements.</p>
+      </div>
+
+      <div class="process-banner">
+        <div class="process-banner-header" onclick="toggleCollapse('uarProcessBody')">
+          <span class="process-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            UAR 6-Phase Process Reference
+          </span>
+          <span class="collapse-icon" id="uarProcessBody-icon">▼</span>
+        </div>
+        <div id="uarProcessBody" class="process-banner-body">
+          <div class="process-stages">
+            <div class="process-stage"><div class="stage-num">1</div><div class="stage-info"><div class="stage-title">Scoping & Prioritization</div><div class="stage-desc">Define which systems are in scope. Prioritize: privileged accounts (quarterly), standard users (annual).</div></div></div>
+            <div class="process-stage"><div class="stage-num">2</div><div class="stage-info"><div class="stage-title">Access Inventory</div><div class="stage-desc">Generate current access list: usernames, group memberships, last login, roles/job functions.</div></div></div>
+            <div class="process-stage"><div class="stage-num">3</div><div class="stage-info"><div class="stage-title">Certification</div><div class="stage-desc">Route to managers/system owners for approve/revoke decisions. Document rationale for each.</div></div></div>
+            <div class="process-stage"><div class="stage-num">4</div><div class="stage-info"><div class="stage-title">Risk Assessment</div><div class="stage-desc">Flag excessive privileges, orphaned accounts, former employees. Assess privilege creep.</div></div></div>
+            <div class="process-stage"><div class="stage-num">5</div><div class="stage-info"><div class="stage-title">Remediation</div><div class="stage-desc">Revoke/modify access per decisions. Create SNOW tickets for each remediation. Verify changes.</div></div></div>
+            <div class="process-stage"><div class="stage-num">6</div><div class="stage-info"><div class="stage-title">Documentation</div><div class="stage-desc">Generate audit-ready report: scope, methodology, findings, remediation actions, approver signatures.</div></div></div>
+          </div>
+          <div class="common-issues-section">
+            <div class="ci-title">⚡ Common UAR Issues</div>
+            <div class="ci-tags">
+              <span class="ci-tag">Reviewer non-response / escalation needed</span><span class="ci-tag">Former employee access not revoked</span><span class="ci-tag">Privilege creep detected</span><span class="ci-tag">Orphaned accounts</span><span class="ci-tag">Missing audit trail documentation</span><span class="ci-tag">Access data stale at time of review</span><span class="ci-tag">No remediation tickets created</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="uar-campaigns-section">
+        <div class="section-header">
+          <h3>Active UAR Campaigns</h3>
+          <button class="btn-primary" onclick="openUARModal()">+ New Campaign</button>
+        </div>
+        <div id="uarCampaignGrid" class="uar-grid"></div>
+      </div>
+
+      <div class="filter-bar" style="margin-top:24px;">
+        <div class="filter-group"><label>Phase</label>
+          <select id="uarPhaseFilter" onchange="renderUarTickets()">
+            <option value="">All Phases</option><option>Scoping</option><option>Inventory</option><option>Certification</option><option>Risk Assessment</option><option>Remediation</option><option>Documentation</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="openTicketModal('UAR')">+ Add UAR Item</button>
+      </div>
+      <div id="uarTicketGrid" class="ticket-grid"></div>
+    </div>
+
+    <!-- FEDRAMP VIEW -->
+    <div id="view-fedramp" class="view">
+      <div class="view-header">
+        <h1>FedRAMP — Authorization & Compliance</h1>
+        <p class="view-sub">Track authorization journey: Preparation → 3PAO Assessment → ATO → Continuous Monitoring (ConMon). NIST 800-53 controls.</p>
+      </div>
+
+      <div class="process-banner">
+        <div class="process-banner-header" onclick="toggleCollapse('fedrampProcessBody')">
+          <span class="process-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            FedRAMP Authorization Phases & ConMon Reference
+          </span>
+          <span class="collapse-icon" id="fedrampProcessBody-icon">▼</span>
+        </div>
+        <div id="fedrampProcessBody" class="process-banner-body">
+          <div class="process-stages">
+            <div class="process-stage"><div class="stage-num">1</div><div class="stage-info"><div class="stage-title">Preparation</div><div class="stage-desc">Define authorization boundary & FIPS 199 categorization. Develop SSP, POA&M, architecture diagrams.</div></div></div>
+            <div class="process-stage"><div class="stage-num">2</div><div class="stage-info"><div class="stage-title">Readiness Assessment</div><div class="stage-desc">3PAO conducts RAR. Validates technical capabilities, security requirements maturity, ConMon readiness.</div></div></div>
+            <div class="process-stage"><div class="stage-num">3</div><div class="stage-info"><div class="stage-title">Authorization Assessment</div><div class="stage-desc">3PAO develops SAP. Tests controls against SSP claims. Produces SAR. POA&M updated with findings.</div></div></div>
+            <div class="process-stage"><div class="stage-num">4</div><div class="stage-info"><div class="stage-title">ATO Issuance</div><div class="stage-desc">Agency AO reviews full package (SSP, SAP, SAR, POA&M). Issues Authority to Operate (ATO).</div></div></div>
+            <div class="process-stage"><div class="stage-num">5</div><div class="stage-info"><div class="stage-title">ConMon (Ongoing)</div><div class="stage-desc">Monthly: vulnerability scans, POA&M updates. Annual: 3PAO independent assessment, penetration testing.</div></div></div>
+          </div>
+          <div class="common-issues-section">
+            <div class="ci-title">⚡ Common FedRAMP Issues</div>
+            <div class="ci-tags">
+              <span class="ci-tag">SSP documentation inconsistencies</span><span class="ci-tag">Authorization boundary undefined for 3rd-party tools</span><span class="ci-tag">Missed monthly ConMon deliverable</span><span class="ci-tag">POA&M finding past SLA deadline</span><span class="ci-tag">Control not implemented per SSP claim</span><span class="ci-tag">Vulnerability scan not covering full inventory</span><span class="ci-tag">Incident not reported within 1-hour window</span><span class="ci-tag">Annual 3PAO assessment overdue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fedramp-tracker-card">
+        <div class="card-header"><h3>Authorization Journey Tracker</h3></div>
+        <div class="auth-journey" id="authJourney"></div>
+      </div>
+
+      <div class="conmon-card">
+        <div class="card-header">
+          <h3>ConMon Obligations</h3>
+          <span class="badge badge-amber">Monthly Required</span>
+        </div>
+        <div class="conmon-items">
+          <div class="conmon-item"><div class="conmon-icon ci-green">✓</div><div class="conmon-text"><strong>Vulnerability Scans</strong><span>Monthly — all assets within boundary</span></div><div class="conmon-due">Due monthly</div></div>
+          <div class="conmon-item"><div class="conmon-icon ci-amber">!</div><div class="conmon-text"><strong>POA&M Update</strong><span>High: 30d | Moderate: 90d | Low: 180d remediation SLA</span></div><div class="conmon-due">Monthly submit</div></div>
+          <div class="conmon-item"><div class="conmon-icon ci-blue">i</div><div class="conmon-text"><strong>Deviation Requests</strong><span>Submit for any risk acceptance or false positive</span></div><div class="conmon-due">As needed</div></div>
+          <div class="conmon-item"><div class="conmon-icon ci-violet">★</div><div class="conmon-text"><strong>Annual 3PAO Assessment</strong><span>Independent penetration testing + full control re-assessment</span></div><div class="conmon-due">Annual</div></div>
+          <div class="conmon-item"><div class="conmon-icon ci-red">!</div><div class="conmon-text"><strong>Incident Reporting</strong><span>Report within 1 hour if federal data affected (CISA + FedRAMP + Agency)</span></div><div class="conmon-due">≤1hr SLA</div></div>
+        </div>
+      </div>
+
+      <div class="filter-bar" style="margin-top:24px;">
+        <div class="filter-group"><label>Phase</label>
+          <select id="fedrampPhaseFilter" onchange="renderFedrampTickets()">
+            <option value="">All</option><option>Preparation</option><option>Readiness Assessment</option><option>Authorization Assessment</option><option>ATO</option><option>ConMon</option>
+          </select>
+        </div>
+        <div class="filter-group"><label>Status</label>
+          <select id="fedrampStatusFilter" onchange="renderFedrampTickets()">
+            <option value="">All</option><option>Backlog</option><option>In Progress</option><option>Review</option><option>Blocked</option><option>Done</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="openTicketModal('FedRAMP')">+ Add FedRAMP Item</button>
+      </div>
+      <div id="fedrampTicketGrid" class="ticket-grid"></div>
+    </div>
+
+    <!-- GCP VIEW -->
+    <div id="view-gcp" class="view">
+      <div class="view-header">
+        <h1>GCP Project — Cloud Security Operations</h1>
+        <p class="view-sub">Google Cloud Platform project tracking: IAM policies, resource provisioning, security findings, and compliance posture.</p>
+      </div>
+
+      <div class="process-banner">
+        <div class="process-banner-header" onclick="toggleCollapse('gcpProcessBody')">
+          <span class="process-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            GCP Security Operations Reference
+          </span>
+          <span class="collapse-icon" id="gcpProcessBody-icon">▼</span>
+        </div>
+        <div id="gcpProcessBody" class="process-banner-body">
+          <div class="common-issues-section">
+            <div class="ci-title">⚡ Common GCP Security Issues</div>
+            <div class="ci-tags">
+              <span class="ci-tag">Over-privileged service account</span><span class="ci-tag">Public storage bucket</span><span class="ci-tag">Missing VPC firewall rules</span><span class="ci-tag">Audit logs disabled</span><span class="ci-tag">IAM binding to allUsers</span><span class="ci-tag">No org policy applied</span><span class="ci-tag">Key rotation overdue</span><span class="ci-tag">Unencrypted disk</span><span class="ci-tag">Security Command Center finding unresolved</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group"><label>Status</label>
+          <select id="gcpStatusFilter" onchange="renderGcpTickets()">
+            <option value="">All</option><option>Backlog</option><option>In Progress</option><option>Review</option><option>Done</option>
+          </select>
+        </div>
+        <div class="filter-group"><label>Category</label>
+          <select id="gcpCategoryFilter" onchange="renderGcpTickets()">
+            <option value="">All</option><option>IAM</option><option>Networking</option><option>Storage</option><option>Compute</option><option>Compliance</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="openTicketModal('GCP')">+ Add GCP Task</button>
+      </div>
+      <div id="gcpTicketGrid" class="ticket-grid"></div>
+    </div>
+
+    <!-- KANBAN VIEW -->
+    <div id="view-kanban" class="view">
+      <div class="view-header">
+        <h1>Kanban Board</h1>
+        <p class="view-sub">Drag-and-drop task management across all workstreams.</p>
+      </div>
+      <div class="kanban-filter-bar">
+        <div class="kanban-filters">
+          <button class="kanban-filter-btn active" data-filter="ALL" onclick="setKanbanFilter('ALL',this)">ALL</button>
+          <button class="kanban-filter-btn" data-filter="IDAM" onclick="setKanbanFilter('IDAM',this)">IDAM</button>
+          <button class="kanban-filter-btn" data-filter="ServiceNow" onclick="setKanbanFilter('ServiceNow',this)">SNOW</button>
+          <button class="kanban-filter-btn" data-filter="UAR" onclick="setKanbanFilter('UAR',this)">UAR</button>
+          <button class="kanban-filter-btn" data-filter="FedRAMP" onclick="setKanbanFilter('FedRAMP',this)">FedRAMP</button>
+          <button class="kanban-filter-btn" data-filter="GCP" onclick="setKanbanFilter('GCP',this)">GCP</button>
+        </div>
+        <button class="btn-primary" onclick="openNewTicketModal()">+ New Ticket</button>
+      </div>
+      <div class="kanban-board" id="kanbanBoard">
+        <div class="kanban-col" data-status="Backlog">
+          <div class="kanban-col-header"><span class="kanban-col-title">Backlog</span><span class="kanban-col-count" id="count-Backlog">0</span></div>
+          <div class="kanban-cards" id="kanban-Backlog" ondragover="allowDrop(event)" ondrop="drop(event,'Backlog')"></div>
+        </div>
+        <div class="kanban-col" data-status="In Progress">
+          <div class="kanban-col-header"><span class="kanban-col-title">In Progress</span><span class="kanban-col-count" id="count-In Progress">0</span></div>
+          <div class="kanban-cards" id="kanban-In Progress" ondragover="allowDrop(event)" ondrop="drop(event,'In Progress')"></div>
+        </div>
+        <div class="kanban-col" data-status="Review">
+          <div class="kanban-col-header"><span class="kanban-col-title">Review</span><span class="kanban-col-count" id="count-Review">0</span></div>
+          <div class="kanban-cards" id="kanban-Review" ondragover="allowDrop(event)" ondrop="drop(event,'Review')"></div>
+        </div>
+        <div class="kanban-col" data-status="Blocked">
+          <div class="kanban-col-header"><span class="kanban-col-title">Blocked</span><span class="kanban-col-count" id="count-Blocked">0</span></div>
+          <div class="kanban-cards" id="kanban-Blocked" ondragover="allowDrop(event)" ondrop="drop(event,'Blocked')"></div>
+        </div>
+        <div class="kanban-col" data-status="Done">
+          <div class="kanban-col-header"><span class="kanban-col-title">Done</span><span class="kanban-col-count" id="count-Done">0</span></div>
+          <div class="kanban-cards" id="kanban-Done" ondragover="allowDrop(event)" ondrop="drop(event,'Done')"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES VIEW -->
+    <div id="view-notes" class="view">
+      <div class="view-header">
+        <h1>Notes & Sticky Boards</h1>
+        <p class="view-sub">Quick capture for meeting notes, observations, reminders, and ad-hoc info.</p>
+      </div>
+      <div class="notes-toolbar">
+        <button class="sticky-color-btn" onclick="addSticky('yellow')" style="background:#fde047;color:#78350f">+ Yellow Note</button>
+        <button class="sticky-color-btn" onclick="addSticky('cyan')" style="background:#22d3ee;color:#083344">+ Cyan Note</button>
+        <button class="sticky-color-btn" onclick="addSticky('violet')" style="background:#a78bfa;color:#2e1065">+ Purple Note</button>
+        <button class="sticky-color-btn" onclick="addSticky('emerald')" style="background:#34d399;color:#064e3b">+ Green Note</button>
+        <button class="sticky-color-btn" onclick="addSticky('red')" style="background:#f87171;color:#7f1d1d">+ Red Note</button>
+        <button class="btn-ghost" onclick="addNoteSection()">+ Add Board Section</button>
+      </div>
+      <div id="notesBoard" class="notes-board"></div>
+    </div>
+
+  </div>
+</main>
+
+<!-- TICKET MODAL -->
+<div id="ticketModal" class="modal-overlay" style="display:none" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">New Ticket</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Title *</label><input type="text" id="f_title" placeholder="Brief description of the task/issue"></div>
+        <div class="form-group"><label>Workstream *</label>
+          <select id="f_workstream">
+            <option>IDAM</option><option>ServiceNow</option><option>UAR</option><option>FedRAMP</option><option>GCP</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Status</label>
+          <select id="f_status">
+            <option>Backlog</option><option>In Progress</option><option>Review</option><option>Blocked</option><option>Done</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Priority</label>
+          <select id="f_priority">
+            <option>Low</option><option>Medium</option><option>High</option><option>Critical</option>
+          </select>
+        </div>
+        <div class="form-group full-width"><label>Ticket / Reference ID</label><input type="text" id="f_ticketId" placeholder="e.g. INC0012345, CHG0004321, IDAM-2024-001"></div>
+        <div class="form-group full-width"><label>Description</label><textarea id="f_description" rows="3" placeholder="Detailed description of the ticket, issue, or task"></textarea></div>
+        <div class="form-group full-width"><label>Work Performed</label><textarea id="f_workPerformed" rows="4" placeholder="Document steps taken, commands run, changes made, approvals obtained..."></textarea></div>
+        <div class="form-group"><label>Timeline / Due Date</label><input type="date" id="f_timeline"></div>
+        <div class="form-group"><label>Phase / Stage (optional)</label><input type="text" id="f_phase" placeholder="e.g. ConMon, Certification, Remediation"></div>
+        <div class="form-group full-width"><label>Evidence Notes</label><textarea id="f_evidence" rows="2" placeholder="Links, screenshot descriptions, log references, artifact names..."></textarea></div>
+      </div>
+
+      <div class="common-issues-panel">
+        <div class="ci-panel-title">⚡ Quick-Add Common Issue to Work Performed</div>
+        <div id="modalCommonIssues" class="ci-tags" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="form-group full-width" style="margin-top:16px;">
+        <label>Notes</label>
+        <textarea id="f_notes" rows="2" placeholder="Additional notes, blockers, follow-ups..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveTicket()">Save Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- UAR CAMPAIGN MODAL -->
+<div id="uarModal" class="modal-overlay" style="display:none" onclick="closeUARModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>New UAR Campaign</h2>
+      <button class="modal-close" onclick="closeUARModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full-width"><label>Campaign Name *</label><input type="text" id="uar_name" placeholder="e.g. Q2 2024 Privileged Account Review — Engineering Dept"></div>
+        <div class="form-group"><label>Review Type</label>
+          <select id="uar_type">
+            <option>Privileged Accounts (Quarterly)</option><option>Standard Users (Annual)</option><option>Contractor Access</option><option>Application-Specific</option><option>Trigger-Based</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Current Phase</label>
+          <select id="uar_phase">
+            <option>Scoping</option><option>Inventory</option><option>Certification</option><option>Risk Assessment</option><option>Remediation</option><option>Documentation</option><option>Complete</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Systems In Scope</label><input type="text" id="uar_systems" placeholder="AD, Salesforce, GCP, Okta..."></div>
+        <div class="form-group"><label>Due Date</label><input type="date" id="uar_due"></div>
+        <div class="form-group full-width"><label>Review Owner / Lead</label><input type="text" id="uar_owner" placeholder="Name or team responsible"></div>
+        <div class="form-group full-width"><label>Notes</label><textarea id="uar_notes" rows="2" placeholder="Scope notes, compliance driver, special considerations..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeUARModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveUARCampaign()">Create Campaign</button>
+    </div>
+  </div>
+</div>
+
+<!-- TICKET DETAIL MODAL -->
+<div id="detailModal" class="modal-overlay" style="display:none" onclick="closeDetailModalOutside(event)">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <h2 id="detailModalTitle">Ticket Detail</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-ghost btn-sm" id="detailEditBtn" onclick="editCurrentTicket()">Edit</button>
+        <button class="btn-danger btn-sm" id="detailDeleteBtn" onclick="deleteCurrentTicket()">Delete</button>
+        <button class="modal-close" onclick="closeDetailModal()">×</button>
+      </div>
+    </div>
+    <div class="modal-body" id="detailModalBody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+// ===== SUPABASE CONFIG =====
+// These values are injected at build time by Render's build script.
+// Never put real keys here — set them in Render → Environment Variables.
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_KEY = '__SUPABASE_KEY__';
+
+const useSupabase = () => SUPABASE_URL && SUPABASE_KEY;
+
+// Supabase REST API helper
+async function sb(method, table, body, query = '') {
+  const url = `${SUPABASE_URL}/rest/v1/${table}${query}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : 'return=representation'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error(`Supabase ${method} ${table} failed: ${res.status}`);
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ===== STATE =====
+let tickets = [];
+let uarCampaigns = [];
+let notes = [];
+let currentView = 'dashboard';
+let editingTicketId = null;
+let currentDetailId = null;
+let kanbanFilter = 'ALL';
+let charts = {};
+
+const COMMON_ISSUES = {
+  IDAM: ['Orphaned accounts not deprovisioned','Missing MFA enrollment','Excessive privilege granted','AD sync latency','No work performed doc attached','Role not matching job function','Missing manager approval','Identity proofing docs incomplete'],
+  ServiceNow: ['AD replication failure','Password sync loop','Locked account','GPO not applying','Kerberos pre-auth failure','DNS resolution failure','SPN conflict','Domain trust broken','SYSVOL not replicating','SLA breach risk'],
+  UAR: ['Reviewer non-response','Former employee access not revoked','Privilege creep detected','Orphaned accounts','Missing audit trail','Access data stale at review','No remediation tickets created','Escalation threshold reached'],
+  FedRAMP: ['SSP documentation inconsistency','Authorization boundary gap for 3rd-party tool','Missed monthly ConMon deliverable','POA&M finding past SLA deadline','Control not implemented per SSP claim','Vulnerability scan incomplete','Incident not reported within 1hr','Annual 3PAO assessment overdue'],
+  GCP: ['Over-privileged service account','Public storage bucket','Missing VPC firewall rules','Audit logs disabled','IAM binding to allUsers','No org policy applied','Key rotation overdue','Unencrypted disk','SCC finding unresolved']
+};
+
+// ===== STORAGE (Supabase → localStorage fallback) =====
+async function loadData() {
+  if (useSupabase()) {
+    try {
+      const [t, u, n] = await Promise.all([
+        sb('GET', 'tickets', null, '?order=created_at.desc'),
+        sb('GET', 'uar_campaigns', null, '?order=created_at.desc'),
+        sb('GET', 'notes', null, '?order=created_at.desc')
+      ]);
+      tickets = t || [];
+      uarCampaigns = u || [];
+      notes = n || [];
+      updateDBStatus(true);
+      return;
+    } catch (e) {
+      console.warn('Supabase load failed, falling back to localStorage:', e);
+      updateDBStatus(false, e.message);
+    }
+  }
+  // localStorage fallback
+  tickets = JSON.parse(localStorage.getItem('secops_tickets') || '[]');
+  uarCampaigns = JSON.parse(localStorage.getItem('secops_uar_campaigns') || '[]');
+  notes = JSON.parse(localStorage.getItem('secops_notes') || '[]');
+}
+
+async function saveTicketToDB(ticket) {
+  if (useSupabase()) {
+    try {
+      const { id, ...data } = ticket;
+      const existing = tickets.find(t => t.id === id);
+      if (existing && existing._dbid) {
+        await sb('PATCH', `tickets?id=eq.${existing._dbid}`, data);
+      } else {
+        const rows = await sb('POST', 'tickets', data);
+        if (rows && rows[0]) ticket._dbid = rows[0].id;
+      }
+      return;
+    } catch (e) { console.warn('Supabase save ticket failed:', e); }
+  }
+  localStorage.setItem('secops_tickets', JSON.stringify(tickets));
+}
+
+async function deleteTicketFromDB(id) {
+  if (useSupabase()) {
+    try {
+      const t = tickets.find(x => x.id === id);
+      if (t && t._dbid) await sb('DELETE', `tickets?id=eq.${t._dbid}`, null);
+      return;
+    } catch (e) { console.warn('Supabase delete failed:', e); }
+  }
+  localStorage.setItem('secops_tickets', JSON.stringify(tickets));
+}
+
+async function saveUARToDB(campaign) {
+  if (useSupabase()) {
+    try {
+      const rows = await sb('POST', 'uar_campaigns', campaign);
+      if (rows && rows[0]) campaign._dbid = rows[0].id;
+      return;
+    } catch (e) { console.warn('Supabase save UAR failed:', e); }
+  }
+  localStorage.setItem('secops_uar_campaigns', JSON.stringify(uarCampaigns));
+}
+
+async function saveNotesToDB() {
+  // Notes stored as a single JSON blob in a key-value table
+  if (useSupabase()) {
+    try {
+      await sb('POST', 'app_config', { key: 'notes', value: JSON.stringify(notes) });
+      return;
+    } catch (e) { console.warn('Supabase save notes failed:', e); }
+  }
+  localStorage.setItem('secops_notes', JSON.stringify(notes));
+}
+
+function updateDBStatus(connected, errMsg) {
+  const indicator = document.getElementById('dbIndicator');
+  const statusText = document.querySelector('.status-text');
+  const dbLabel = document.querySelector('.db-label');
+  if (!indicator) return;
+  if (connected) {
+    indicator.style.color = 'var(--emerald)';
+    if (statusText) statusText.textContent = 'Supabase Connected';
+    if (dbLabel) dbLabel.textContent = 'PostgreSQL';
+  } else {
+    indicator.style.color = 'var(--amber)';
+    if (statusText) statusText.textContent = 'localStorage';
+    if (dbLabel) dbLabel.textContent = errMsg ? 'Supabase error' : 'No DB configured';
+  }
+}
+
+// ===== NAVIGATION =====
+function showView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const el = document.getElementById('view-' + view);
+  if (el) el.classList.add('active');
+
+  const nav = document.querySelector(`[data-view="${view}"]`);
+  if (nav) nav.classList.add('active');
+
+  currentView = view;
+  document.getElementById('breadcrumb').textContent = breadcrumbName(view);
+
+  if (view === 'dashboard') renderDashboard();
+  else if (view === 'idam') renderIdamTickets();
+  else if (view === 'servicenow') renderSnowTickets();
+  else if (view === 'uar') { renderUarCampaigns(); renderUarTickets(); }
+  else if (view === 'fedramp') { renderAuthJourney(); renderFedrampTickets(); }
+  else if (view === 'gcp') renderGcpTickets();
+  else if (view === 'kanban') renderKanban();
+  else if (view === 'notes') renderNotes();
+}
+
+function breadcrumbName(v) {
+  const m = { dashboard:'Dashboard', idam:'IDAM Tickets', servicenow:'ServiceNow / AD',
+    uar:'UAR Process', fedramp:'FedRAMP', gcp:'GCP Project', kanban:'Kanban Board', notes:'Notes & Stickies' };
+  return m[v] || v;
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const idamOpen = tickets.filter(t => t.workstream === 'IDAM' && t.status !== 'Done').length;
+  const snowOpen = tickets.filter(t => t.workstream === 'ServiceNow' && t.status !== 'Done').length;
+  const uarAll = tickets.filter(t => t.workstream === 'UAR');
+  const uarDone = uarAll.filter(t => t.status === 'Done').length;
+  const uarPct = uarAll.length ? Math.round((uarDone / uarAll.length) * 100) : 0;
+  const fedrampAll = tickets.filter(t => t.workstream === 'FedRAMP');
+  const fedrampDone = fedrampAll.filter(t => t.status === 'Done').length;
+  const gcpOpen = tickets.filter(t => t.workstream === 'GCP').length;
+  const overdue = tickets.filter(t => t.priority === 'Critical' && t.status !== 'Done').length;
+
+  setText('kpi-idam', idamOpen);
+  setText('kpi-snow', snowOpen);
+  setText('kpi-uar', uarPct + '%');
+  setText('kpi-fedramp', `${fedrampDone}/${fedrampAll.length}`);
+  setText('kpi-gcp', gcpOpen);
+  setText('kpi-overdue', overdue);
+
+  renderRecentTickets();
+  renderCharts();
+}
+
+function setText(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+
+function renderRecentTickets() {
+  const container = document.getElementById('recentTickets');
+  if (!container) return;
+  const recent = [...tickets].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0,8);
+  if (!recent.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-title">No tickets yet</div>Add your first ticket to get started.</div>'; return; }
+  container.innerHTML = recent.map(t => `
+    <div class="ticket-mini" onclick="showTicketDetail('${t.id}')">
+      <div class="tm-left">
+        <div class="tm-dot" style="background:${priorityColor(t.priority)}"></div>
+        <div class="tm-info">
+          <div class="tm-title">${esc(t.title)}</div>
+          <div class="tm-sub">${t.workstream} · ${fmtDate(t.createdAt)}</div>
+        </div>
+      </div>
+      <span class="status-badge status-${t.status.replace(' ','')}">${t.status}</span>
+    </div>
+  `).join('');
+}
+
+function renderCharts() {
+  const wsLabels = ['IDAM', 'ServiceNow', 'UAR', 'FedRAMP', 'GCP'];
+  const wsData = wsLabels.map(w => tickets.filter(t => t.workstream === w).length);
+  const statusLabels = ['Backlog', 'In Progress', 'Review', 'Blocked', 'Done'];
+  const statusData = statusLabels.map(s => tickets.filter(t => t.status === s).length);
+  const prioLabels = ['Critical', 'High', 'Medium', 'Low'];
+  const prioData = prioLabels.map(p => tickets.filter(t => t.priority === p).length);
+
+  const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {}
+  };
+
+  initChart('chartWorkstream', 'bar', wsLabels, wsData,
+    ['rgba(34,211,238,0.8)','rgba(251,191,36,0.8)','rgba(52,211,153,0.8)','rgba(167,139,250,0.8)','rgba(248,113,113,0.8)'],
+    { ...chartDefaults, scales: { x: { ticks: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 9 } }, grid: { color: '#1e2229' } }, y: { ticks: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 9 } }, grid: { color: '#1e2229' }, beginAtZero: true } } });
+
+  initChart('chartStatus', 'doughnut', statusLabels, statusData,
+    ['#374151','#22d3ee','#a78bfa','#f87171','#34d399'],
+    { ...chartDefaults, plugins: { legend: { display: true, position: 'bottom', labels: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 9 }, boxWidth: 10, padding: 8 } } } });
+
+  initChart('chartPriority', 'doughnut', prioLabels, prioData,
+    ['#f87171','#fbbf24','#60a5fa','#374151'],
+    { ...chartDefaults, plugins: { legend: { display: true, position: 'bottom', labels: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 9 }, boxWidth: 10, padding: 8 } } } });
+}
+
+function initChart(id, type, labels, data, colors, options) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (charts[id]) { charts[id].destroy(); }
+  Chart.defaults.color = '#6b7280';
+  charts[id] = new Chart(canvas, {
+    type,
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, borderRadius: type === 'bar' ? 4 : 0 }] },
+    options
+  });
+}
+
+// ===== TICKET RENDERING =====
+function renderTickets(containerId, filteredTickets) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!filteredTickets.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-title">No tickets found</div>Add a ticket using the button above.</div>';
+    return;
+  }
+  container.innerHTML = filteredTickets.map(t => ticketCardHTML(t)).join('');
+}
+
+function ticketCardHTML(t) {
+  return `
+    <div class="ticket-card" data-priority="${t.priority}" onclick="showTicketDetail('${t.id}')">
+      <div class="tc-top">
+        <div class="tc-title">${esc(t.title)}</div>
+        <div class="tc-badges">
+          <span class="status-badge status-${t.status.replace(' ','')}">${t.status}</span>
+          <span class="priority-badge priority-${t.priority}">${t.priority}</span>
+        </div>
+      </div>
+      <div class="tc-meta">
+        ${t.ticketId ? `<span class="tc-id">${esc(t.ticketId)}</span>` : ''}
+        <span class="tc-workstream">${t.workstream}</span>
+        ${t.phase ? `<span class="tc-id">Phase: ${esc(t.phase)}</span>` : ''}
+      </div>
+      ${t.description ? `<div class="tc-desc">${esc(t.description)}</div>` : ''}
+      <div class="tc-footer">
+        <span class="tc-date">${fmtDate(t.timeline || t.createdAt)}</span>
+        ${t.evidence ? '<span class="tc-id" style="color:var(--emerald)">📎 Evidence</span>' : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderIdamTickets() {
+  const status = document.getElementById('idamStatusFilter')?.value || '';
+  const priority = document.getElementById('idamPriorityFilter')?.value || '';
+  const type = document.getElementById('idamTypeFilter')?.value || '';
+  let filtered = tickets.filter(t => t.workstream === 'IDAM');
+  if (status) filtered = filtered.filter(t => t.status === status);
+  if (priority) filtered = filtered.filter(t => t.priority === priority);
+  if (type) filtered = filtered.filter(t => t.phase === type);
+  renderTickets('idamTicketGrid', filtered);
+}
+
+function renderSnowTickets() {
+  const status = document.getElementById('snowStatusFilter')?.value || '';
+  const type = document.getElementById('snowTypeFilter')?.value || '';
+  let filtered = tickets.filter(t => t.workstream === 'ServiceNow');
+  if (status) filtered = filtered.filter(t => t.status === status);
+  if (type) filtered = filtered.filter(t => t.phase === type);
+  renderTickets('snowTicketGrid', filtered);
+}
+
+function renderUarTickets() {
+  const phase = document.getElementById('uarPhaseFilter')?.value || '';
+  let filtered = tickets.filter(t => t.workstream === 'UAR');
+  if (phase) filtered = filtered.filter(t => t.phase === phase);
+  renderTickets('uarTicketGrid', filtered);
+}
+
+function renderFedrampTickets() {
+  const phase = document.getElementById('fedrampPhaseFilter')?.value || '';
+  const status = document.getElementById('fedrampStatusFilter')?.value || '';
+  let filtered = tickets.filter(t => t.workstream === 'FedRAMP');
+  if (phase) filtered = filtered.filter(t => t.phase === phase);
+  if (status) filtered = filtered.filter(t => t.status === status);
+  renderTickets('fedrampTicketGrid', filtered);
+}
+
+function renderGcpTickets() {
+  const status = document.getElementById('gcpStatusFilter')?.value || '';
+  const cat = document.getElementById('gcpCategoryFilter')?.value || '';
+  let filtered = tickets.filter(t => t.workstream === 'GCP');
+  if (status) filtered = filtered.filter(t => t.status === status);
+  if (cat) filtered = filtered.filter(t => t.phase === cat);
+  renderTickets('gcpTicketGrid', filtered);
+}
+
+// ===== UAR CAMPAIGNS =====
+function renderUarCampaigns() {
+  const container = document.getElementById('uarCampaignGrid');
+  if (!container) return;
+  if (!uarCampaigns.length) {
+    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">No UAR Campaigns</div>Start a new campaign to track the full review lifecycle.</div>';
+    return;
+  }
+
+  const phaseOrder = ['Scoping','Inventory','Certification','Risk Assessment','Remediation','Documentation','Complete'];
+
+  container.innerHTML = uarCampaigns.map(c => {
+    const phaseIdx = phaseOrder.indexOf(c.phase);
+    const dots = phaseOrder.slice(0, -1).map((_, i) => {
+      const cls = i < phaseIdx ? 'done' : i === phaseIdx ? 'active' : '';
+      return `<div class="uar-phase-dot ${cls}"></div>`;
+    }).join('');
+
+    return `
+      <div class="uar-campaign-card">
+        <div class="uar-camp-header">
+          <div>
+            <div class="uar-camp-name">${esc(c.name)}</div>
+            <div class="uar-camp-type">${c.type}</div>
+          </div>
+          <span class="badge badge-cyan">${c.phase}</span>
+        </div>
+        <div class="uar-phase-track">${dots}</div>
+        <div class="uar-camp-meta">
+          <span>Systems: ${esc(c.systems || 'N/A')}</span>
+          <span>Due: ${fmtDate(c.due)}</span>
+        </div>
+        ${c.owner ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;font-family:var(--font-mono)">Lead: ${esc(c.owner)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== FEDRAMP JOURNEY =====
+function renderAuthJourney() {
+  const container = document.getElementById('authJourney');
+  if (!container) return;
+
+  const phases = [
+    { num: 1, label: 'Preparation', sub: 'SSP / Boundary / POA&M' },
+    { num: 2, label: 'Readiness', sub: '3PAO RAR Assessment' },
+    { num: 3, label: 'Authorization', sub: 'SAP / SAR / Testing' },
+    { num: 4, label: 'ATO', sub: 'Authority to Operate' },
+    { num: 5, label: 'ConMon', sub: 'Continuous Monitoring' }
+  ];
+
+  const fedrampTickets = tickets.filter(t => t.workstream === 'FedRAMP');
+  const inProgressPhase = fedrampTickets.find(t => t.status === 'In Progress')?.phase || '';
+
+  const phaseMap = {
+    'Preparation': 1, 'Readiness Assessment': 2, 'Authorization Assessment': 3,
+    'ATO': 4, 'ConMon': 5
+  };
+
+  const currentPhaseNum = phaseMap[inProgressPhase] || 0;
+
+  container.innerHTML = phases.map((p) => {
+    const isDone = p.num < currentPhaseNum;
+    const isCurrent = p.num === currentPhaseNum;
+    const cls = isDone ? 'complete' : isCurrent ? 'current' : '';
+    return `
+      <div class="auth-phase">
+        <div class="ap-block ${cls}">
+          <div class="ap-num">${isDone ? '✓' : p.num}</div>
+          <div class="ap-label">${p.label}</div>
+          <div class="ap-sub">${p.sub}</div>
+          ${isCurrent ? '<div class="ap-sub" style="color:var(--cyan);margin-top:4px">▶ IN PROGRESS</div>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== KANBAN =====
+function renderKanban() {
+  const statuses = ['Backlog', 'In Progress', 'Review', 'Blocked', 'Done'];
+  let filtered = kanbanFilter === 'ALL' ? tickets : tickets.filter(t => t.workstream === kanbanFilter);
+
+  statuses.forEach(s => {
+    const col = document.getElementById(`kanban-${s}`);
+    const count = document.getElementById(`count-${s}`);
+    if (!col) return;
+
+    const colTickets = filtered.filter(t => t.status === s);
+    if (count) count.textContent = colTickets.length;
+
+    if (!colTickets.length) {
+      col.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:10px;font-family:var(--font-mono)">Drop here</div>';
+      return;
+    }
+
+    col.innerHTML = colTickets.map(t => `
+      <div class="kanban-card" data-id="${t.id}" data-priority="${t.priority}"
+        draggable="true"
+        ondragstart="dragStart(event, '${t.id}')"
+        ondragend="dragEnd(event)"
+        onclick="showTicketDetail('${t.id}')">
+        <div class="kc-title">${esc(t.title)}</div>
+        <div class="kc-meta">
+          <span class="kc-workstream">${t.workstream}</span>
+          <span class="priority-badge priority-${t.priority}">${t.priority}</span>
+          ${t.ticketId ? `<span class="tc-id" style="font-size:8px">${esc(t.ticketId)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function setKanbanFilter(f, btn) {
+  kanbanFilter = f;
+  document.querySelectorAll('.kanban-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderKanban();
+}
+
+let draggedId = null;
+
+function dragStart(e, id) {
+  draggedId = id;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function dragEnd(e) {
+  e.target.classList.remove('dragging');
+  draggedId = null;
+}
+
+function allowDrop(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+async function drop(e, newStatus) {
+  e.preventDefault();
+  if (!draggedId) return;
+  const ticket = tickets.find(t => t.id === draggedId);
+  if (!ticket) return;
+  ticket.status = newStatus;
+  ticket.updatedAt = new Date().toISOString();
+  await saveTicketToDB(ticket);
+  renderKanban();
+  renderDashboardIfActive();
+  showToast(`Moved to ${newStatus}`);
+}
+
+// ===== NOTES =====
+function renderNotes() {
+  const board = document.getElementById('notesBoard');
+  if (!board) return;
+  if (!notes.length) {
+    board.innerHTML = '<div class="empty-state"><div class="empty-state-title">No notes yet</div>Use the buttons above to add sticky notes or board sections.</div>';
+    return;
+  }
+  board.innerHTML = notes.map((n, i) => renderNoteItem(n, i)).join('');
+}
+
+function renderNoteItem(n, i) {
+  if (n.type === 'section') {
+    const stickies = n.stickies || [];
+    return `
+      <div class="note-section">
+        <div class="note-section-header">
+          <input class="note-section-title" value="${esc(n.title)}"
+            oninput="updateSectionTitle(${i}, this.value)" placeholder="Board title...">
+          <button class="btn-ghost btn-sm" onclick="addStickyToSection(${i})">+ Add Note</button>
+          <button class="btn-danger btn-sm" onclick="deleteNoteItem(${i})">Delete</button>
+        </div>
+        <div class="stickies-row" id="section-stickies-${i}">
+          ${stickies.map((s, j) => stickyHTML(s, i, j)).join('')}
+          ${!stickies.length ? '<div style="color:var(--text-dim);font-size:11px;font-family:var(--font-mono)">Click "+ Add Note" to add a sticky here.</div>' : ''}
+        </div>
+      </div>
+    `;
+  }
+  return `<div class="stickies-row">${stickyHTML(n, i, null)}</div>`;
+}
+
+function stickyHTML(s, i, j) {
+  const colors = {
+    yellow: { bg: '#fef9c3', color: '#78350f' },
+    cyan: { bg: '#cffafe', color: '#083344' },
+    violet: { bg: '#ede9fe', color: '#2e1065' },
+    emerald: { bg: '#d1fae5', color: '#064e3b' },
+    red: { bg: '#fee2e2', color: '#7f1d1d' }
+  };
+  const c = colors[s.color] || colors.yellow;
+  return `
+    <div class="sticky-note" style="background:${c.bg};color:${c.color}">
+      <button class="sticky-note-delete" onclick="deleteSticky(${i}, ${j})">×</button>
+      <textarea oninput="updateSticky(${i}, ${j}, this.value)">${esc(s.content || '')}</textarea>
+    </div>
+  `;
+}
+
+async function addSticky(color) {
+  notes.push({ type: 'sticky', color, content: '', createdAt: now() });
+  await saveNotesToDB();
+  renderNotes();
+}
+
+async function addNoteSection() {
+  notes.push({ type: 'section', title: 'New Board', stickies: [], createdAt: now() });
+  await saveNotesToDB();
+  renderNotes();
+}
+
+async function addStickyToSection(i) {
+  if (!notes[i].stickies) notes[i].stickies = [];
+  notes[i].stickies.push({ color: 'yellow', content: '', createdAt: now() });
+  await saveNotesToDB();
+  renderNotes();
+}
+
+async function updateSectionTitle(i, val) {
+  notes[i].title = val;
+  await saveNotesToDB();
+}
+
+async function updateSticky(i, j, val) {
+  if (j !== null) notes[i].stickies[j].content = val;
+  else notes[i].content = val;
+  await saveNotesToDB();
+}
+
+async function deleteSticky(i, j) {
+  if (j !== null) notes[i].stickies.splice(j, 1);
+  else notes.splice(i, 1);
+  await saveNotesToDB();
+  renderNotes();
+}
+
+async function deleteNoteItem(i) {
+  notes.splice(i, 1);
+  await saveNotesToDB();
+  renderNotes();
+}
+
+// ===== MODAL =====
+function openNewTicketModal() { openTicketModal('IDAM'); }
+
+function openTicketModal(ws) {
+  editingTicketId = null;
+  document.getElementById('modalTitle').textContent = `New ${ws} Ticket`;
+  resetForm();
+  document.getElementById('f_workstream').value = ws;
+  loadCommonIssues(ws);
+  document.getElementById('ticketModal').style.display = 'flex';
+}
+
+function resetForm() {
+  ['f_title','f_ticketId','f_description','f_workPerformed','f_timeline','f_phase','f_evidence','f_notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f_status').value = 'Backlog';
+  document.getElementById('f_priority').value = 'Low';
+}
+
+function loadCommonIssues(ws) {
+  const container = document.getElementById('modalCommonIssues');
+  if (!container) return;
+  const issues = COMMON_ISSUES[ws] || [];
+  container.innerHTML = issues.map(issue => `
+    <span class="ci-tag" onclick="appendToWorkPerformed('${issue.replace(/'/g,"\\'")}'">${esc(issue)}</span>
+  `).join('');
+}
+
+function appendToWorkPerformed(text) {
+  const el = document.getElementById('f_workPerformed');
+  if (!el) return;
+  el.value += (el.value ? '\n• ' : '• ') + text;
+  showToast('Added to work performed');
+}
+
+document.getElementById('f_workstream')?.addEventListener('change', function() {
+  loadCommonIssues(this.value);
+});
+
+function closeModal() { document.getElementById('ticketModal').style.display = 'none'; editingTicketId = null; }
+function closeModalOutside(e) { if (e.target.id === 'ticketModal') closeModal(); }
+
+async function saveTicket() {
+  const title = document.getElementById('f_title').value.trim();
+  if (!title) { showToast('Title is required', 'error'); return; }
+
+  const ticket = {
+    id: editingTicketId || genId(),
+    title,
+    workstream: document.getElementById('f_workstream').value,
+    status: document.getElementById('f_status').value,
+    priority: document.getElementById('f_priority').value,
+    ticketId: document.getElementById('f_ticketId').value.trim(),
+    description: document.getElementById('f_description').value.trim(),
+    workPerformed: document.getElementById('f_workPerformed').value.trim(),
+    timeline: document.getElementById('f_timeline').value,
+    phase: document.getElementById('f_phase').value.trim(),
+    evidence: document.getElementById('f_evidence').value.trim(),
+    notes: document.getElementById('f_notes').value.trim(),
+    createdAt: editingTicketId ? (tickets.find(t => t.id === editingTicketId)?.createdAt || now()) : now(),
+    updatedAt: now()
+  };
+
+  if (editingTicketId) {
+    const idx = tickets.findIndex(t => t.id === editingTicketId);
+    if (idx !== -1) tickets[idx] = ticket;
+  } else {
+    tickets.unshift(ticket);
+  }
+
+  await saveTicketToDB(ticket);
+  closeModal();
+  closeDetailModal();
+  refreshCurrentView();
+  showToast(editingTicketId ? 'Ticket updated' : 'Ticket created');
+}
+
+// ===== UAR MODAL =====
+function openUARModal() { document.getElementById('uarModal').style.display = 'flex'; }
+function closeUARModal() { document.getElementById('uarModal').style.display = 'none'; }
+function closeUARModalOutside(e) { if (e.target.id === 'uarModal') closeUARModal(); }
+
+async function saveUARCampaign() {
+  const name = document.getElementById('uar_name').value.trim();
+  if (!name) { showToast('Campaign name required', 'error'); return; }
+  const campaign = {
+    id: genId(),
+    name,
+    type: document.getElementById('uar_type').value,
+    phase: document.getElementById('uar_phase').value,
+    systems: document.getElementById('uar_systems').value.trim(),
+    due: document.getElementById('uar_due').value,
+    owner: document.getElementById('uar_owner').value.trim(),
+    notes: document.getElementById('uar_notes').value.trim(),
+    createdAt: now()
+  };
+  uarCampaigns.unshift(campaign);
+  await saveUARToDB(campaign);
+  closeUARModal();
+  renderUarCampaigns();
+  showToast('UAR Campaign created');
+}
+
+// ===== DETAIL MODAL =====
+function showTicketDetail(id) {
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+  currentDetailId = id;
+
+  document.getElementById('detailModalTitle').textContent = `[${t.workstream}] ${t.title}`;
+
+  document.getElementById('detailModalBody').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-field">
+        <div class="detail-label">Ticket / Reference ID</div>
+        <div class="detail-value-mono">${esc(t.ticketId || '—')}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Workstream</div>
+        <span class="badge badge-cyan">${t.workstream}</span>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Status</div>
+        <span class="status-badge status-${t.status.replace(' ','')}">${t.status}</span>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Priority</div>
+        <span class="priority-badge priority-${t.priority}">${t.priority}</span>
+      </div>
+      ${t.phase ? `<div class="detail-field"><div class="detail-label">Phase / Type</div><div class="detail-value">${esc(t.phase)}</div></div>` : ''}
+      ${t.timeline ? `<div class="detail-field"><div class="detail-label">Timeline / Due</div><div class="detail-value">${fmtDate(t.timeline)}</div></div>` : ''}
+      ${t.description ? `<div class="detail-field full"><div class="detail-label">Description</div><div class="detail-text">${esc(t.description)}</div></div>` : ''}
+      ${t.workPerformed ? `<div class="detail-field full"><div class="detail-label">Work Performed</div><div class="detail-text">${esc(t.workPerformed)}</div></div>` : ''}
+      ${t.evidence ? `<div class="detail-field full"><div class="detail-label">Evidence Notes</div><div class="detail-text" style="color:var(--emerald)">${esc(t.evidence)}</div></div>` : ''}
+      ${t.notes ? `<div class="detail-field full"><div class="detail-label">Notes</div><div class="detail-text">${esc(t.notes)}</div></div>` : ''}
+      <div class="detail-field"><div class="detail-label">Created</div><div class="detail-value" style="font-size:11px;color:var(--text-muted)">${fmtDateTime(t.createdAt)}</div></div>
+      <div class="detail-field"><div class="detail-label">Last Updated</div><div class="detail-value" style="font-size:11px;color:var(--text-muted)">${fmtDateTime(t.updatedAt)}</div></div>
+    </div>
+  `;
+
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+function closeDetailModal() { document.getElementById('detailModal').style.display = 'none'; currentDetailId = null; }
+function closeDetailModalOutside(e) { if (e.target.id === 'detailModal') closeDetailModal(); }
+
+function editCurrentTicket() {
+  if (!currentDetailId) return;
+  const t = tickets.find(x => x.id === currentDetailId);
+  if (!t) return;
+
+  editingTicketId = t.id;
+  document.getElementById('modalTitle').textContent = `Edit — ${t.title}`;
+  document.getElementById('f_title').value = t.title;
+  document.getElementById('f_workstream').value = t.workstream;
+  document.getElementById('f_status').value = t.status;
+  document.getElementById('f_priority').value = t.priority;
+  document.getElementById('f_ticketId').value = t.ticketId || '';
+  document.getElementById('f_description').value = t.description || '';
+  document.getElementById('f_workPerformed').value = t.workPerformed || '';
+  document.getElementById('f_timeline').value = t.timeline || '';
+  document.getElementById('f_phase').value = t.phase || '';
+  document.getElementById('f_evidence').value = t.evidence || '';
+  document.getElementById('f_notes').value = t.notes || '';
+
+  loadCommonIssues(t.workstream);
+  document.getElementById('detailModal').style.display = 'none';
+  document.getElementById('ticketModal').style.display = 'flex';
+}
+
+async function deleteCurrentTicket() {
+  if (!currentDetailId) return;
+  if (!confirm('Delete this ticket? This cannot be undone.')) return;
+  await deleteTicketFromDB(currentDetailId);
+  tickets = tickets.filter(t => t.id !== currentDetailId);
+  closeDetailModal();
+  refreshCurrentView();
+  showToast('Ticket deleted');
+}
+
+// ===== COLLAPSE =====
+function toggleCollapse(id) {
+  const body = document.getElementById(id);
+  const icon = document.getElementById(id + '-icon');
+  if (!body) return;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? '' : 'none';
+  if (icon) icon.classList.toggle('rotated', !isHidden);
+}
+
+// ===== HELPERS =====
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function now() { return new Date().toISOString(); }
+
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtDateTime(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function priorityColor(p) {
+  const m = { Critical: 'var(--red)', High: 'var(--amber)', Medium: 'var(--blue)', Low: 'var(--text-dim)' };
+  return m[p] || 'var(--text-dim)';
+}
+
+function refreshCurrentView() {
+  const v = currentView;
+  if (v === 'dashboard') renderDashboard();
+  else if (v === 'idam') renderIdamTickets();
+  else if (v === 'servicenow') renderSnowTickets();
+  else if (v === 'uar') { renderUarCampaigns(); renderUarTickets(); }
+  else if (v === 'fedramp') { renderAuthJourney(); renderFedrampTickets(); }
+  else if (v === 'gcp') renderGcpTickets();
+  else if (v === 'kanban') renderKanban();
+}
+
+function renderDashboardIfActive() {
+  if (currentView === 'dashboard') renderDashboard();
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.borderLeftColor = type === 'error' ? 'var(--red)' : 'var(--cyan)';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+// ===== SEED DEMO DATA =====
+function seedDemoData() {
+  if (tickets.length > 0) return;
+
+  const demoTickets = [
+    { workstream: 'IDAM', title: 'Onboarding — New Analyst Role Access', status: 'In Progress', priority: 'High', ticketId: 'IDAM-2024-041', description: 'Provision access for new SOC analyst hire. AD account, Okta enrollment, GCP project viewer role.', workPerformed: '• AD account created in OU=SOC\\Analysts\n• Okta provisioning triggered via SCIM\n• Manager approval obtained (email on file)', phase: 'Onboarding', timeline: '2024-09-15', evidence: 'AD screenshot, manager approval email' },
+    { workstream: 'IDAM', title: 'Deprovision — Former Contractor T. Williams', status: 'Done', priority: 'Critical', ticketId: 'IDAM-2024-038', description: 'Immediate account termination for contractor following contract end.', workPerformed: '• AD account disabled\n• All group memberships removed\n• Okta session revoked\n• GCP IAM bindings removed\n• Shared mailbox access revoked', phase: 'Offboarding', timeline: '2024-09-10', evidence: 'HR termination notice, AD audit log export' },
+    { workstream: 'IDAM', title: 'Role Change — L. Chen promoted to Senior Engineer', status: 'Review', priority: 'Medium', ticketId: 'IDAM-2024-044', description: 'Role elevation requires additional access to production GCP environment and Prod-AD group.', workPerformed: '• Old role removed from AD\n• New role group added\n• GCP project editor binding updated', phase: 'Role Change', timeline: '2024-09-20' },
+    { workstream: 'ServiceNow', title: 'INC0018432 — AD Password Reset Loop', status: 'Blocked', priority: 'High', ticketId: 'INC0018432', description: 'Multiple users experiencing password reset loop on self-service portal. Affects ~30 users in Engineering OU.', workPerformed: '• Checked AD replication status — OK\n• Reviewed ADFS event log — token timeout suspected\n• Engaged Microsoft escalation — awaiting callback', phase: 'Incident', timeline: '2024-09-14', evidence: 'Event viewer screenshots, netlogon.log snippets' },
+    { workstream: 'ServiceNow', title: 'CHG0004231 — GPO Deployment for CIS Benchmarks', status: 'In Progress', priority: 'Medium', ticketId: 'CHG0004231', description: 'Roll out CIS Level 1 Windows 10 GPO to Engineering and QA OUs.', workPerformed: '• GPO created and tested in dev OU\n• Pilot applied to 10 machines\n• No adverse effects reported', phase: 'Change Request', timeline: '2024-09-25' },
+    { workstream: 'UAR', title: 'Q3 2024 — Privileged Account Review (Engineering)', status: 'In Progress', priority: 'High', ticketId: 'UAR-2024-Q3-ENG', description: 'Quarterly review of all admin and privileged accounts in Engineering department.', workPerformed: '• Access inventory exported from AD and Okta\n• 147 accounts identified in scope\n• Review requests sent to 12 managers\n• 8 responses received', phase: 'Certification', timeline: '2024-09-30', evidence: 'Access inventory spreadsheet v2, manager response emails' },
+    { workstream: 'UAR', title: 'Remediation — Revoke Former Employee Access (Batch 3)', status: 'Backlog', priority: 'High', ticketId: 'UAR-2024-REM-003', description: '14 accounts flagged from Q3 UAR belong to former employees still with active access.', phase: 'Remediation', timeline: '2024-10-05' },
+    { workstream: 'FedRAMP', title: 'SSP Development — Authorization Boundary Definition', status: 'Done', priority: 'Critical', ticketId: 'FED-SSP-001', description: 'Define and document authorization boundary per FedRAMP requirements. Includes all 3rd-party services that process federal data.', workPerformed: '• Authorization boundary diagram drafted\n• Data flow diagrams completed for 4 data paths\n• All external services inventoried\n• SSP Section 8 complete', phase: 'Preparation', evidence: 'SSP v1.4, ABD diagram, DFD v2' },
+    { workstream: 'FedRAMP', title: 'ConMon — August Monthly Vulnerability Scans', status: 'Review', priority: 'High', ticketId: 'FED-CONMON-AUG24', description: 'Monthly vulnerability scanning obligation. All assets within authorization boundary must be scanned.', workPerformed: '• Tenable scan completed — 847 assets\n• 3 High findings identified\n• 1 Critical finding — 30-day SLA started\n• POA&M updated', phase: 'ConMon', timeline: '2024-09-05', evidence: 'Tenable scan report PDF, POA&M v14' },
+    { workstream: 'FedRAMP', title: 'Annual 3PAO Assessment Preparation', status: 'In Progress', priority: 'Critical', ticketId: 'FED-3PAO-2024', description: 'Prepare for annual independent 3PAO security assessment. Coordinate testing methodology with 3PAO, ensure all evidence is current.', phase: 'Authorization Assessment', timeline: '2024-11-01' },
+    { workstream: 'GCP', title: 'IAM Audit — Service Account Permission Review', status: 'In Progress', priority: 'High', ticketId: 'GCP-IAM-024', description: 'Review all service accounts for over-permissioning. Apply principle of least privilege.', workPerformed: '• 23 service accounts enumerated\n• 5 identified with owner-level binding\n• Custom roles being created as replacement', phase: 'IAM', timeline: '2024-09-22' },
+    { workstream: 'GCP', title: 'Storage Bucket — Public Access Remediation', status: 'Done', priority: 'Critical', ticketId: 'GCP-STG-011', description: 'Public bucket (gs://app-assets-prod) identified in Security Command Center. Immediate remediation required.', workPerformed: '• allUsers and allAuthenticatedUsers IAM bindings removed\n• Bucket locked to org policy constraint\n• SCC finding resolved', phase: 'Storage', evidence: 'SCC resolved finding screenshot, gsutil IAM output' }
+  ];
+
+  demoTickets.forEach(t => {
+    t.id = genId();
+    t.createdAt = now();
+    t.updatedAt = now();
+  });
+
+  tickets = demoTickets;
+  localStorage.setItem('secops_tickets', JSON.stringify(tickets));
+
+  uarCampaigns = [
+    { id: genId(), name: 'Q3 2024 Privileged Account Review — Engineering', type: 'Privileged Accounts (Quarterly)', phase: 'Certification', systems: 'AD, GCP, Okta, GitHub', due: '2024-09-30', owner: 'Identity Security Team', createdAt: now() },
+    { id: genId(), name: 'Annual User Access Review — All Departments', type: 'Standard Users (Annual)', phase: 'Scoping', systems: 'All IT Systems', due: '2024-12-15', owner: 'GRC / Compliance', createdAt: now() }
+  ];
+  localStorage.setItem('secops_uar_campaigns', JSON.stringify(uarCampaigns));
+}
+
+// ===== INIT =====
+async function init() {
+  // Set initial status
+  if (!useSupabase()) {
+    updateDBStatus(false);
+  }
+  await loadData();
+  seedDemoData();
+  await loadData();
+  renderDashboard();
+}
+
+init();
+</script>
 </body>
 </html>
