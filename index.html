@@ -1209,6 +1209,10 @@ html, body {
       <div class="breadcrumb" id="breadcrumb">Dashboard</div>
     </div>
     <div class="topbar-right">
+    <div id="submitDayBanner" style="display:none;align-items:center;gap:10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:7px;padding:5px 12px;">
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--amber)">⏳ Unsaved to Supabase</span>
+      <button id="submitDayBtn" class="btn-primary btn-sm" onclick="submitDay()">Submit Day</button>
+    </div>
       <div class="search-bar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" placeholder="Search tickets, tasks..."/>
@@ -1764,22 +1768,30 @@ html, body {
 const SUPABASE_URL = '__SUPABASE_URL__';
 const SUPABASE_KEY = '__SUPABASE_KEY__';
 
-const useSupabase = () => SUPABASE_URL && SUPABASE_KEY;
+// Only use Supabase if the placeholders were actually replaced at build time
+const useSupabase = () =>
+  SUPABASE_URL && SUPABASE_KEY &&
+  SUPABASE_URL !== '__SUPABASE_URL__' &&
+  SUPABASE_KEY !== '__SUPABASE_KEY__';
 
 // Supabase REST API helper
 async function sb(method, table, body, query = '') {
   const url = `${SUPABASE_URL}/rest/v1/${table}${query}`;
+  const preferHeader = method === 'POST' ? 'return=representation' : 'return=representation';
   const res = await fetch(url, {
     method,
     headers: {
       'apikey': SUPABASE_KEY,
       'Authorization': `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
-      'Prefer': method === 'POST' ? 'return=representation' : 'return=representation'
+      'Prefer': preferHeader
     },
     body: body ? JSON.stringify(body) : undefined
   });
-  if (!res.ok) throw new Error(`Supabase ${method} ${table} failed: ${res.status}`);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Supabase ${method} ${table} failed: ${res.status} ${errText}`);
+  }
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
@@ -1794,6 +1806,11 @@ let currentDetailId = null;
 let kanbanFilter = 'ALL';
 let charts = {};
 
+// Pending changes: map of ticket id → ticket object for changes not yet submitted
+let pendingChanges = {};   // { [id]: ticket }
+let pendingDeletes = new Set(); // ids deleted locally but not yet in Supabase
+let daySubmitted = false;  // true once "Submit Day" has been pressed at least once
+
 const COMMON_ISSUES = {
   IDAM: ['Orphaned accounts not deprovisioned','Missing MFA enrollment','Excessive privilege granted','AD sync latency','No work performed doc attached','Role not matching job function','Missing manager approval','Identity proofing docs incomplete'],
   ServiceNow: ['AD replication failure','Password sync loop','Locked account','GPO not applying','Kerberos pre-auth failure','DNS resolution failure','SPN conflict','Domain trust broken','SYSVOL not replicating','SLA breach risk'],
@@ -1803,6 +1820,25 @@ const COMMON_ISSUES = {
 };
 
 // ===== STORAGE (Supabase → localStorage fallback) =====
+
+// Restore pending state from localStorage across refreshes
+function loadPendingState() {
+  try {
+    const pc = localStorage.getItem('secops_pending_changes');
+    const pd = localStorage.getItem('secops_pending_deletes');
+    const ds = localStorage.getItem('secops_day_submitted');
+    pendingChanges = pc ? JSON.parse(pc) : {};
+    pendingDeletes = new Set(pd ? JSON.parse(pd) : []);
+    daySubmitted = ds === 'true';
+  } catch(e) { pendingChanges = {}; pendingDeletes = new Set(); }
+}
+
+function savePendingState() {
+  localStorage.setItem('secops_pending_changes', JSON.stringify(pendingChanges));
+  localStorage.setItem('secops_pending_deletes', JSON.stringify([...pendingDeletes]));
+  localStorage.setItem('secops_day_submitted', String(daySubmitted));
+}
+
 async function loadData() {
   if (useSupabase()) {
     try {
@@ -1814,6 +1850,17 @@ async function loadData() {
       tickets = t || [];
       uarCampaigns = u || [];
       notes = n || [];
+
+      // Apply any pending local changes on top of Supabase data
+      Object.values(pendingChanges).forEach(pending => {
+        const idx = tickets.findIndex(x => x.id === pending.id);
+        if (idx !== -1) tickets[idx] = { ...tickets[idx], ...pending };
+        else tickets.unshift(pending);
+      });
+      pendingDeletes.forEach(id => {
+        tickets = tickets.filter(x => x.id !== id);
+      });
+
       updateDBStatus(true);
       return;
     } catch (e) {
@@ -1827,54 +1874,154 @@ async function loadData() {
   notes = JSON.parse(localStorage.getItem('secops_notes') || '[]');
 }
 
+// Save a ticket: always write to localStorage immediately.
+// If Supabase is available AND day has been submitted, also push to Supabase right away.
+// If Supabase is available but day NOT yet submitted, queue in pendingChanges.
 async function saveTicketToDB(ticket) {
-  if (useSupabase()) {
-    try {
-      const { id, ...data } = ticket;
-      const existing = tickets.find(t => t.id === id);
-      if (existing && existing._dbid) {
-        await sb('PATCH', `tickets?id=eq.${existing._dbid}`, data);
-      } else {
-        const rows = await sb('POST', 'tickets', data);
-        if (rows && rows[0]) ticket._dbid = rows[0].id;
-      }
-      return;
-    } catch (e) { console.warn('Supabase save ticket failed:', e); }
-  }
+  // Always keep localStorage in sync
   localStorage.setItem('secops_tickets', JSON.stringify(tickets));
+
+  if (!useSupabase()) return;
+
+  if (daySubmitted) {
+    // Push to Supabase immediately
+    await pushTicketToSupabase(ticket);
+  } else {
+    // Queue for later
+    pendingChanges[ticket.id] = ticket;
+    savePendingState();
+    updateSubmitBanner();
+  }
+}
+
+async function pushTicketToSupabase(ticket) {
+  try {
+    // Use upsert on the app-level `id` column (text). Supabase table must have `id` as the primary key or unique.
+    // We send the full ticket including our `id` field and let Supabase upsert.
+    await sb('POST', 'tickets', ticket, '');
+    // Remove from pending if it was there
+    delete pendingChanges[ticket.id];
+    savePendingState();
+  } catch(e) {
+    console.warn('Supabase upsert ticket failed:', e);
+    // Re-queue it if push failed
+    pendingChanges[ticket.id] = ticket;
+    savePendingState();
+    showToast('Saved locally — Supabase sync failed', 'error');
+  }
 }
 
 async function deleteTicketFromDB(id) {
-  if (useSupabase()) {
+  // Remove from localStorage immediately
+  localStorage.setItem('secops_tickets', JSON.stringify(tickets.filter(x => x.id !== id)));
+
+  if (!useSupabase()) return;
+
+  if (daySubmitted) {
     try {
-      const t = tickets.find(x => x.id === id);
-      if (t && t._dbid) await sb('DELETE', `tickets?id=eq.${t._dbid}`, null);
-      return;
-    } catch (e) { console.warn('Supabase delete failed:', e); }
+      await sb('DELETE', 'tickets', null, `?id=eq.${id}`);
+      delete pendingChanges[id];
+      pendingDeletes.delete(id);
+      savePendingState();
+    } catch(e) {
+      console.warn('Supabase delete failed:', e);
+      pendingDeletes.add(id);
+      savePendingState();
+    }
+  } else {
+    // Queue delete
+    pendingDeletes.add(id);
+    delete pendingChanges[id];
+    savePendingState();
+    updateSubmitBanner();
   }
-  localStorage.setItem('secops_tickets', JSON.stringify(tickets));
 }
 
 async function saveUARToDB(campaign) {
-  if (useSupabase()) {
-    try {
-      const rows = await sb('POST', 'uar_campaigns', campaign);
-      if (rows && rows[0]) campaign._dbid = rows[0].id;
-      return;
-    } catch (e) { console.warn('Supabase save UAR failed:', e); }
-  }
   localStorage.setItem('secops_uar_campaigns', JSON.stringify(uarCampaigns));
+  if (!useSupabase()) return;
+  try {
+    await sb('POST', 'uar_campaigns', campaign);
+  } catch (e) { console.warn('Supabase save UAR failed:', e); }
 }
 
 async function saveNotesToDB() {
-  // Notes stored as a single JSON blob in a key-value table
-  if (useSupabase()) {
-    try {
-      await sb('POST', 'app_config', { key: 'notes', value: JSON.stringify(notes) });
-      return;
-    } catch (e) { console.warn('Supabase save notes failed:', e); }
-  }
   localStorage.setItem('secops_notes', JSON.stringify(notes));
+  if (!useSupabase()) return;
+  try {
+    await sb('POST', 'app_config', { key: 'notes', value: JSON.stringify(notes) });
+  } catch (e) { console.warn('Supabase save notes failed:', e); }
+}
+
+// ===== SUBMIT DAY =====
+async function submitDay() {
+  if (!useSupabase()) {
+    showToast('No Supabase configured', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('submitDayBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+
+  let errors = 0;
+
+  // Flush all pending changes
+  const changeEntries = Object.values(pendingChanges);
+  for (const ticket of changeEntries) {
+    try {
+      await sb('POST', 'tickets', ticket);
+      delete pendingChanges[ticket.id];
+    } catch(e) {
+      console.warn('Failed to sync ticket', ticket.id, e);
+      errors++;
+    }
+  }
+
+  // Flush all pending deletes
+  for (const id of [...pendingDeletes]) {
+    try {
+      await sb('DELETE', 'tickets', null, `?id=eq.${id}`);
+      pendingDeletes.delete(id);
+    } catch(e) {
+      console.warn('Failed to delete ticket', id, e);
+      errors++;
+    }
+  }
+
+  daySubmitted = true;
+  savePendingState();
+
+  if (btn) { btn.disabled = false; btn.textContent = '✓ Day Submitted'; }
+
+  updateSubmitBanner();
+
+  if (errors > 0) {
+    showToast(`Submitted with ${errors} sync error(s) — check console`, 'error');
+  } else {
+    showToast('Day submitted — all changes synced to Supabase ✓');
+  }
+}
+
+function updateSubmitBanner() {
+  const banner = document.getElementById('submitDayBanner');
+  const btn = document.getElementById('submitDayBtn');
+  const pendingCount = Object.keys(pendingChanges).length + pendingDeletes.size;
+
+  if (!banner || !useSupabase()) return;
+
+  if (daySubmitted && pendingCount === 0) {
+    banner.style.display = 'none';
+    if (btn) { btn.textContent = '✓ Submitted'; btn.style.background = 'var(--emerald)'; btn.style.color = '#000'; }
+  } else {
+    banner.style.display = 'flex';
+    if (btn) {
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.textContent = pendingCount > 0
+        ? `Submit Day (${pendingCount} pending)`
+        : daySubmitted ? '✓ Submitted' : 'Submit Day';
+    }
+  }
 }
 
 function updateDBStatus(connected, errMsg) {
@@ -1888,8 +2035,8 @@ function updateDBStatus(connected, errMsg) {
     if (dbLabel) dbLabel.textContent = 'PostgreSQL';
   } else {
     indicator.style.color = 'var(--amber)';
-    if (statusText) statusText.textContent = 'localStorage';
-    if (dbLabel) dbLabel.textContent = errMsg ? 'Supabase error' : 'No DB configured';
+    if (statusText) statusText.textContent = useSupabase() ? 'Supabase Error' : 'localStorage';
+    if (dbLabel) dbLabel.textContent = errMsg ? 'Supabase error' : (useSupabase() ? 'DB unreachable' : 'No DB configured');
   }
 }
 
@@ -2026,10 +2173,11 @@ function renderTickets(containerId, filteredTickets) {
 }
 
 function ticketCardHTML(t) {
+  const isPending = useSupabase() && !daySubmitted && pendingChanges[t.id];
   return `
     <div class="ticket-card" data-priority="${t.priority}" onclick="showTicketDetail('${t.id}')">
       <div class="tc-top">
-        <div class="tc-title">${esc(t.title)}</div>
+        <div class="tc-title">${esc(t.title)}${isPending ? ' <span title="Pending submit" style="color:var(--amber);font-size:9px;font-family:var(--font-mono)">●</span>' : ''}</div>
         <div class="tc-badges">
           <span class="status-badge status-${t.status.replace(' ','')}">${t.status}</span>
           <span class="priority-badge priority-${t.priority}">${t.priority}</span>
@@ -2242,6 +2390,7 @@ async function drop(e, newStatus) {
   await saveTicketToDB(ticket);
   renderKanban();
   renderDashboardIfActive();
+  updateSubmitBanner();
   showToast(`Moved to ${newStatus}`);
 }
 
@@ -2410,6 +2559,7 @@ async function saveTicket() {
   }
 
   await saveTicketToDB(ticket);
+  updateSubmitBanner();
   closeModal();
   closeDetailModal();
   refreshCurrentView();
@@ -2516,6 +2666,7 @@ async function deleteCurrentTicket() {
   tickets = tickets.filter(t => t.id !== currentDetailId);
   closeDetailModal();
   refreshCurrentView();
+  updateSubmitBanner();
   showToast('Ticket deleted');
 }
 
@@ -2622,7 +2773,8 @@ function seedDemoData() {
 
 // ===== INIT =====
 async function init() {
-  // Set initial status
+  loadPendingState();
+
   if (!useSupabase()) {
     updateDBStatus(false);
   }
@@ -2630,6 +2782,7 @@ async function init() {
   seedDemoData();
   await loadData();
   renderDashboard();
+  updateSubmitBanner();
 }
 
 init();
