@@ -1,25 +1,24 @@
 #!/bin/bash
-# Render runs this before deploying your static site.
-# It reads SUPABASE_URL and SUPABASE_KEY from Render's Environment Variables
-# and injects them into the HTML file — so your keys never live in code.
+# Render Build Script — runs before the app is served
+# Set SUPABASE_URL and SUPABASE_KEY in Render → Environment Variables
+# This script replaces the placeholders in the HTML with the real values.
 
-set -e  # stop if anything errors
+set -e
 
-echo "🔧 Injecting Supabase config into index.html..."
+echo "Injecting Supabase credentials..."
 
-# Make sure both env vars are set
 if [ -z "$SUPABASE_URL" ]; then
-  echo "❌ ERROR: SUPABASE_URL environment variable is not set."
-  exit 1
+  echo "WARNING: SUPABASE_URL is not set. App will run in localStorage-only mode."
+else
+  sed -i "s|SUPABASE_URL_PLACEHOLDER|${SUPABASE_URL}|g" index.html
+  echo "SUPABASE_URL injected."
 fi
 
 if [ -z "$SUPABASE_KEY" ]; then
-  echo "❌ ERROR: SUPABASE_KEY environment variable is not set."
-  exit 1
+  echo "WARNING: SUPABASE_KEY is not set. App will run in localStorage-only mode."
+else
+  sed -i "s|SUPABASE_KEY_PLACEHOLDER|${SUPABASE_KEY}|g" index.html
+  echo "SUPABASE_KEY injected."
 fi
 
-# Replace the placeholder tokens with the real values
-sed -i "s|__SUPABASE_URL__|${SUPABASE_URL}|g" index.html
-sed -i "s|__SUPABASE_KEY__|${SUPABASE_KEY}|g" index.html
-
-echo "✅ Done. Supabase config injected successfully."
+echo "Build complete."
